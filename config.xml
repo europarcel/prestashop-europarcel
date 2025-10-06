@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<module>
+    <name>europarcel</name>
+    <displayName><![CDATA[EuroParcel]]></displayName>
+    <version><![CDATA[1.0.0]]></version>
+    <description><![CDATA[Afișează metodele de transport EuroParcel și gestionează livrările]]></description>
+    <author><![CDATA[EuroParcel]]></author>
+    <confirmUninstall><![CDATA[Ești sigur că vrei să dezinstalezi?]]></confirmUninstall>
+    <is_configurable>1</is_configurable>
+    <need_instance>0</need_instance>
+    <limited_countries></limited_countries>
+</module>

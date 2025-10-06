@@ -305,7 +305,7 @@ class EuroParcel extends Module {
 
     private function saveLockerToOrderCarrier($order_id, $locker_id) {
         return Db::getInstance()->update('order_carrier',
-                        array('tracking_number' => pSQL($locker_id)),
+                        array('fixed_location_id' => pSQL($locker_id)),
                         'id_order = ' . (int) $order_id
         );
     }

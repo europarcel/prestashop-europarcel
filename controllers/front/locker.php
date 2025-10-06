@@ -17,13 +17,13 @@ class EuroParcelLockerModuleFrontController extends ModuleFrontController
     {
         $lockers = [
             [
-                'id' => 'LOCKER_001',
+                'id' => '497809',
                 'name' => 'Locker Center București',
                 'address' => 'Str. Exemplu nr. 1',
                 'city' => 'București'
             ],
             [
-                'id' => 'LOCKER_002', 
+                'id' => '502290', 
                 'name' => 'Locker Mall Afi',
                 'address' => 'Bd. Exemplu nr. 2',
                 'city' => 'București'

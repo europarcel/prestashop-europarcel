@@ -10,6 +10,66 @@ class EuroParcel extends Module {
     private $carrier_locker_name = 'EuroParcel Locker';
     private $carrier_delay = 'Livrare în 24-48 de ore';
     private $carrier_locker_delay = 'Livrare a doua zi';
+    private $available_lockers = array(
+        'easybox' => 'Sameday EasyBox - Delivery to locker',
+        'fanbox' => 'Fan Courier FANbox - Delivery to locker',
+        'dpdbox' => 'DPD Box - Delivery to locker',
+    );
+    private $available_carriers = array(
+        'cargus_national' => 'Cargus - Delivery to address',
+        'dpd_standard' => 'DPD - Delivery to address',
+        'fan_courier' => 'Fan Courier - Delivery to address',
+        'gls_national' => 'GLS - Delivery to address',
+        'sameday' => 'SameDay - Delivery to address',
+        'bookurier' => 'Bookurier - Delivery to address',
+    );
+    private $carrier_settings = [
+        'cargus_national' => [
+            'carrier' => 'cargus_national',
+            'carrier_id' => 1,
+            'service_id' => 1
+        ],
+        'dpd_standard' => [
+            'carrier' => 'dpd_standard',
+            'carrier_id' => 2,
+            'service_id' => 1
+        ],
+        'fan_courier' => [
+            'carrier' => 'fan_courier',
+            'carrier_id' => 3,
+            'service_id' => 1
+        ],
+        'gls_national' => [
+            'carrier' => 'gls_national',
+            'carrier_id' => 4,
+            'service_id' => 1
+        ],
+        'sameday' => [
+            'carrier' => 'sameday',
+            'carrier_id' => 6,
+            'service_id' => 1
+        ],
+        'bookurier' => [
+            'carrier' => 'bookurier',
+            'carrier_id' => 5,
+            'service_id' => 1
+        ],
+        'easybox' => [
+            'carrier' => 'easybox',
+            'carrier_id' => 6,
+            'service_id' => 2
+        ],
+        'fanbox' => [
+            'carrier' => 'fanbox',
+            'carrier_id' => 3,
+            'service_id' => 2
+        ],
+        'dpdbox' => [
+            'carrier' => 'dpdbox',
+            'carrier_id' => 2,
+            'service_id' => 2
+        ],
+    ];
 
     public function __construct() {
         $this->name = 'europarcel';
@@ -28,47 +88,91 @@ class EuroParcel extends Module {
     }
 
     public function install() {
-        // Adaugă câmpul locker_id în tabela orders
+        // Adaugă câmpul europarcel_locker_id în tabela orders
         if (!$this->addLockerIdField()) {
             return false;
         }
-
+        if (!$this->addCarrierIdField()) {
+            return false;
+        }
+        if (!$this->addServiceIdField()) {
+            return false;
+        }
         return parent::install() &&
-               $this->createEuroParcelCarrier() &&
-               $this->createEuroParcelCarrierLocker() &&
-               $this->registerHook('displayHeader') &&
-               $this->registerHook('displayCarrierList') &&
-               $this->registerHook('displayCarrierExtraContent') &&
-               $this->registerHook('actionValidateOrder') &&
-               $this->registerHook('displayAdminOrderMain') &&
-               $this->registerHook('displayOrderConfirmation'); //&&
-               //Configuration::updateValue('EUROPARCEL_CARRIER_ID', 0) &&
-               //Configuration::updateValue('EUROPARCEL_LOCKER_CARRIER_ID', 0);
+                $this->createEuroParcelCarrier() &&
+                $this->createEuroParcelCarrierLocker() &&
+                //$this->registerHook('displayHeader') &&
+                //$this->registerHook('displayCarrierList') &&
+                $this->registerHook('displayCarrierExtraContent') &&
+                $this->registerHook('actionValidateOrder') &&
+                $this->registerHook('displayAdminOrderMain') &&
+                $this->registerHook('displayOrderConfirmation') &&
+                Configuration::updateValue('EUROPARCEL_LOCKER_TYPES', '') &&
+                Configuration::updateValue('EUROPARCEL_DEFAULT_CARRIER', 'cargus_national');
     }
 
     public function uninstall() {
-        // Șterge câmpul locker_id (opțional)
+        // Șterge câmpul europarcel_locker_id (opțional) si europarcel_carrier_id
         // $this->removeLockerIdField();
-        
+        //$this->removeCarrierIdField();
+        //$this->removeServiceIdField();
         $this->deleteEuroParcelCarrier();
         $this->deleteEuroParcelCarrierLocker();
         return Configuration::deleteByName('EUROPARCEL_CARRIER_ID') &&
-               Configuration::deleteByName('EUROPARCEL_LOCKER_CARRIER_ID') &&
-               parent::uninstall();
+                Configuration::deleteByName('EUROPARCEL_LOCKER_CARRIER_ID') &&
+                Configuration::deleteByName('EUROPARCEL_LOCKER_TYPES') &&
+                Configuration::deleteByName('EUROPARCEL_DEFAULT_CARRIER') &&
+                parent::uninstall();
     }
 
     private function addLockerIdField() {
         // Verifică dacă câmpul există deja
-        $sql = "SHOW COLUMNS FROM `" . _DB_PREFIX_ . "orders` LIKE 'locker_id'";
+        $sql = "SHOW COLUMNS FROM `" . _DB_PREFIX_ . "orders` LIKE 'europarcel_locker_id'";
         $result = Db::getInstance()->executeS($sql);
-        
+
         if (empty($result)) {
-            // Adaugă câmpul locker_id în tabela orders
+            // Adaugă câmpul europarcel_locker_id în tabela orders
             $sql = "ALTER TABLE `" . _DB_PREFIX_ . "orders` 
-                    ADD `locker_id` VARCHAR(50) NULL AFTER `id_order`";
-            
+                    ADD `europarcel_locker_id` INT UNSIGNED NULL DEFAULT NULL AFTER `id_carrier`";
+
             if (!Db::getInstance()->execute($sql)) {
-                $this->_errors[] = $this->l('Eroare la adăugarea câmpului locker_id în tabela orders');
+                $this->_errors[] = $this->l('Eroare la adăugarea câmpului europarcel_locker_id în tabela orders');
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private function addCarrierIdField() {
+        // Verifică dacă câmpul există deja
+        $sql = "SHOW COLUMNS FROM `" . _DB_PREFIX_ . "orders` LIKE 'europarcel_carrier_id'";
+        $result = Db::getInstance()->executeS($sql);
+
+        if (empty($result)) {
+            // Adaugă câmpul europarcel_carrier_id în tabela orders
+            $sql = "ALTER TABLE `" . _DB_PREFIX_ . "orders` 
+                    ADD `europarcel_carrier_id` INT UNSIGNED NULL DEFAULT NULL AFTER `id_carrier`";
+
+            if (!Db::getInstance()->execute($sql)) {
+                $this->_errors[] = $this->l('Eroare la adăugarea câmpului europarcel_carrier_id în tabela orders');
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private function addServiceIdField() {
+        // Verifică dacă câmpul există deja
+        $sql = "SHOW COLUMNS FROM `" . _DB_PREFIX_ . "orders` LIKE 'europarcel_service_id'";
+        $result = Db::getInstance()->executeS($sql);
+
+        if (empty($result)) {
+            // Adaugă câmpul europarcel_carrier_id în tabela orders
+            $sql = "ALTER TABLE `" . _DB_PREFIX_ . "orders` 
+                    ADD `europarcel_service_id` INT UNSIGNED NULL DEFAULT NULL AFTER `europarcel_carrier_id`";
+
+            if (!Db::getInstance()->execute($sql)) {
+                $this->_errors[] = $this->l('Eroare la adăugarea câmpului europarcel_service_id în tabela orders');
                 return false;
             }
         }
@@ -76,7 +180,17 @@ class EuroParcel extends Module {
     }
 
     private function removeLockerIdField() {
-        $sql = "ALTER TABLE `" . _DB_PREFIX_ . "orders` DROP COLUMN `locker_id`";
+        $sql = "ALTER TABLE `" . _DB_PREFIX_ . "orders` DROP COLUMN `europarcel_locker_id`";
+        return Db::getInstance()->execute($sql);
+    }
+
+    private function removeCarrierIdField() {
+        $sql = "ALTER TABLE `" . _DB_PREFIX_ . "orders` DROP COLUMN `europarcel_carrier_id`";
+        return Db::getInstance()->execute($sql);
+    }
+
+    private function removeServiceIdField() {
+        $sql = "ALTER TABLE `" . _DB_PREFIX_ . "orders` DROP COLUMN `europarcel_service_id`";
         return Db::getInstance()->execute($sql);
     }
 
@@ -280,9 +394,9 @@ class EuroParcel extends Module {
 
     public function hookDisplayCarrierExtraContent($params) {
         $carrier = $params['carrier'];
-        $locker_carrier_id = (int)Configuration::get('EUROPARCEL_LOCKER_CARRIER_ID');
+        $locker_carrier_id = (int) Configuration::get('EUROPARCEL_LOCKER_CARRIER_ID');
 
-        if ((int)$carrier['id'] === $locker_carrier_id) {
+        if ((int) $carrier['id'] === $locker_carrier_id) {
             $selected_locker = $this->getSelectedLockerFromSession();
 
             $this->context->smarty->assign(array(
@@ -292,75 +406,85 @@ class EuroParcel extends Module {
 
             return $this->display(__FILE__, 'carrier_extra_content.tpl');
         }
-        
+
         return '';
     }
 
     public function hookActionValidateOrder($params) {
         $order = $params['order'];
-        $locker_carrier_id = (int)Configuration::get('EUROPARCEL_LOCKER_CARRIER_ID');
-
-        if ((int)$order->id_carrier === $locker_carrier_id) {
+        $locker_carrier_id = (int) Configuration::get('EUROPARCEL_LOCKER_CARRIER_ID');
+        $carrier_id = (int) Configuration::get('EUROPARCEL_CARRIER_ID');
+        $default_carrier=Configuration::get('EUROPARCEL_DEFAULT_CARRIER');
+        if ((int) $order->id_carrier === $locker_carrier_id) {
             $selected_locker = $this->getSelectedLockerFromSession();
 
             if ($selected_locker && isset($selected_locker['id'])) {
                 // Salvează ID-ul locker-ului direct în orders
-                $this->saveLockerToOrder($order->id, $selected_locker['id']);
+                $this->saveLockerToOrder($order->id, $selected_locker['id'],$selected_locker['carrier_id']);
                 $this->clearLockerFromSession();
             }
+        } else if ((int) $order->id_carrier === $carrier_id) {
+                $this->saveCarrierToOrder($order->id, $this->carrier_settings[$default_carrier]['carrier_id']);
         }
     }
 
     public function hookDisplayOrderConfirmation($params) {
         $order = $params['order'];
-        $locker_carrier_id = (int)Configuration::get('EUROPARCEL_LOCKER_CARRIER_ID');
+        $locker_carrier_id = (int) Configuration::get('EUROPARCEL_LOCKER_CARRIER_ID');
 
-        if ((int)$order->id_carrier === $locker_carrier_id) {
-            $locker_id = $this->getLockerIdFromOrder($order->id);
+        if ((int) $order->id_carrier === $locker_carrier_id) {
+            $europarcel_locker_id = $this->getLockerIdFromOrder($order->id);
 
-            if ($locker_id) {
+            if ($europarcel_locker_id) {
                 $this->context->smarty->assign(array(
-                    'locker_id' => $locker_id
+                    'europarcel_locker_id' => $europarcel_locker_id
                 ));
 
                 return $this->display(__FILE__, 'order_confirmation_locker.tpl');
             }
         }
-        
+
         return '';
     }
 
     public function hookDisplayAdminOrderMain($params) {
-        $id_order = (int)$params['id_order'];
+        $id_order = (int) $params['id_order'];
         $order = new Order($id_order);
-        $locker_carrier_id = (int)Configuration::get('EUROPARCEL_LOCKER_CARRIER_ID');
+        $locker_carrier_id = (int) Configuration::get('EUROPARCEL_LOCKER_CARRIER_ID');
 
-        if ((int)$order->id_carrier === $locker_carrier_id) {
-            $locker_id = $this->getLockerIdFromOrder($order->id);
+        if ((int) $order->id_carrier === $locker_carrier_id) {
+            $europarcel_locker_id = $this->getLockerIdFromOrder($order->id);
 
-            if ($locker_id) {
+            if ($europarcel_locker_id) {
                 $this->context->smarty->assign(array(
-                    'locker_id' => $locker_id
+                    'europarcel_locker_id' => $europarcel_locker_id
                 ));
 
                 return $this->display(__FILE__, 'displayAdminOrder.tpl');
             }
         }
-        
+
         return '';
     }
 
-    private function saveLockerToOrder($order_id, $locker_id) {
+    private function saveLockerToOrder($order_id, $europarcel_locker_id, $europarcel_carier_id) {
         // Salvează direct în tabela orders
-        return Db::getInstance()->update('orders', 
-            array('locker_id' => pSQL($locker_id)), 
-            'id_order = ' . (int)$order_id
+        return Db::getInstance()->update('orders',
+                        array('europarcel_locker_id' => pSQL($europarcel_locker_id),'europarcel_service_id'=>2,'europarcel_carrier_id' =>$europarcel_carier_id),
+                        'id_order = ' . (int) $order_id
+        );
+    }
+    private function saveCarrierToOrder($order_id,  $europarcel_carier_id) {
+        // Salvează direct în tabela orders
+        return Db::getInstance()->update('orders',
+                        array('europarcel_service_id'=>1,'europarcel_carrier_id' =>$europarcel_carier_id),
+                        'id_order = ' . (int) $order_id
         );
     }
 
     private function getLockerIdFromOrder($order_id) {
-        $sql = "SELECT locker_id FROM `" . _DB_PREFIX_ . "orders` 
-                WHERE id_order = " . (int)$order_id;
+        $sql = "SELECT europarcel_locker_id FROM `" . _DB_PREFIX_ . "orders` 
+                WHERE id_order = " . (int) $order_id;
 
         return Db::getInstance()->getValue($sql);
     }
@@ -376,19 +500,86 @@ class EuroParcel extends Module {
         unset($this->context->cookie->europarcel_locker);
     }
 
+    public function getAvailableLockersForSelection() {
+        $selected_lockers = explode(',', Configuration::get('EUROPARCEL_LOCKER_TYPES'));
+        $available_lockers = array();
+
+        foreach ($this->available_lockers as $key => $label) {
+            if (in_array($key, $selected_lockers)) {
+                $available_lockers[$key] = $label;
+            }
+        }
+
+        return $available_lockers;
+    }
+
     public function getContent() {
+        if (Tools::isSubmit('save_europarcel_settings')) {
+            $locker_types = Tools::getValue('EUROPARCEL_LOCKER_TYPES');
+            $default_carrier = Tools::getValue('EUROPARCEL_DEFAULT_CARRIER');
+            // Salvează tipurile de lockere selectate
+            if (is_array($locker_types)) {
+                Configuration::updateValue('EUROPARCEL_LOCKER_TYPES', implode(',', $locker_types));
+            } else {
+                Configuration::updateValue('EUROPARCEL_LOCKER_TYPES', '');
+            }
+            if (!empty($default_carrier) && array_key_exists($default_carrier, $this->available_carriers)) {
+                Configuration::updateValue('EUROPARCEL_DEFAULT_CARRIER', $default_carrier);
+            }
+            $output .= $this->displayConfirmation('Setările au fost salvate cu succes.');
+        }
+
         $carrier_id = Configuration::get('EUROPARCEL_CARRIER_ID');
-        $locker_id = Configuration::get('EUROPARCEL_LOCKER_CARRIER_ID');
+        $locker_carrier_id = Configuration::get('EUROPARCEL_LOCKER_CARRIER_ID');
+        $selected_lockers = explode(',', Configuration::get('EUROPARCEL_LOCKER_TYPES'));
+        $default_carrier = Configuration::get('EUROPARCEL_DEFAULT_CARRIER');
+        $output .= '
+        <div class="panel">
+            <div class="panel-heading">Setări EuroParcel</div>
+            <div class="panel-body">
+                <form method="post">
+                <div class="form-group">
+                    <label>Transportator default pentru livrare la adresă:</label>
+                    <select name="EUROPARCEL_DEFAULT_CARRIER" class="form-control">';
+        foreach ($this->available_carriers as $key => $label) {
+            $selected = ($key == $default_carrier) ? 'selected' : '';
+            $output .= '<option value="' . $key . '" ' . $selected . '>' . $label . '</option>';
+        }
+
+        $output .= '</select>
+                    <p class="help-block">Alege transportatorul care va fi folosit când clienții aleg livrare la adresă</p>
+                    </div>
+                    <div class="form-group">
+                        <label>Tipuri de lockere disponibile pentru clienți:</label>
+                        <div class="checkbox">';
+
+        foreach ($this->available_lockers as $key => $label) {
+            $checked = in_array($key, $selected_lockers) ? 'checked' : '';
+            $output .= '<div class="checkbox">
+                                <label>
+                                    <input type="checkbox" name="EUROPARCEL_LOCKER_TYPES[]" value="' . $key . '" ' . $checked . '>
+                                    ' . $label . '
+                                </label>
+                            </div>';
+        }
+
+        $output .= '</div>
+                        <p class="help-block">Selectează tipurile de lockere pe care clienții le pot alege</p>
+                    </div>
+                    <button type="submit" name="save_europarcel_settings" class="btn btn-primary">Salvează setările</button>
+                </form>
+            </div>
+        </div>
         
-        $output = $this->displayConfirmation('Modulul EuroParcel este activ.');
-        $output .= '<div class="panel">';
-        $output .= '<div class="panel-heading">Informații Carrier</div>';
-        $output .= '<div class="panel-body">';
-        $output .= '<p><strong>EuroParcel Carrier ID:</strong> ' . $carrier_id . '</p>';
-        $output .= '<p><strong>EuroParcel Locker Carrier ID:</strong> ' . $locker_id . '</p>';
-        $output .= '<p><strong>Câmp locker_id adăugat în tabela orders:</strong> DA</p>';
-        $output .= '</div></div>';
-        
+        <div class="panel">
+            <div class="panel-heading">Informații Carrier</div>
+            <div class="panel-body">
+                <p><strong>EuroParcel Carrier ID:</strong> ' . $carrier_id . '</p>
+                <p><strong>EuroParcel Locker Carrier ID:</strong> ' . $locker_carrier_id . '</p>
+                <p><strong>Câmp locker_id în tabela orders:</strong> DA</p>
+            </div>
+        </div>';
+
         return $output;
     }
 }

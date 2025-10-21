@@ -14,7 +14,7 @@
         </div>
     {else}
         <div class="alert alert-info mb-2">
-            <p class="mb-2">Pentru a continua, selectează un locker EuroParcel.</p>
+            <p class="mb-2">Pentru a continua, selectează un locker.</p>
             <button type="button" class="btn btn-primary btn-sm europarcel-choose-locker"
                     data-address="{$checkout_data.address}"
                     data-city="{$checkout_data.city}"

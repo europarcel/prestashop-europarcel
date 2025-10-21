@@ -1,34 +1,33 @@
 /**
  * EuroParcel Modal functionality
- * 
+ *
  * Handles the display and interaction of the locker selection modal iframe.
  * Follows WordPress JavaScript coding standards.
- * 
+ *
  * @package    Europarcel
  * @subpackage Assets/JavaScript
  * @since      1.0.0
  */
 
-(function($) {
+(function ($) {
 	'use strict';
 
 	/**
 	 * EuroParcel Modal object
-	 * 
+	 *
 	 * @since 1.0.0
 	 */
 	window.EuroparcelModal = {
-
 		/**
 		 * Show the locker selection modal
-		 * 
+		 *
 		 * Creates and displays a modal dialog containing an iframe with the locker map.
 		 * Handles both desktop and mobile responsive display.
-		 * 
+		 *
 		 * @since 1.0.0
 		 * @param {string} iframeUrl - The URL to load in the iframe
 		 */
-		show: function(iframeUrl) {
+		show: function (iframeUrl) {
 			var isMobile = window.innerWidth <= 768;
 
 			var modalHtml = `
@@ -88,18 +87,18 @@
 
 		/**
 		 * Setup modal event handlers
-		 * 
+		 *
 		 * Configures click handlers, escape key handler, and other modal interactions.
-		 * 
+		 *
 		 * @since 1.0.0
 		 * @param {HTMLElement} modal - The modal element
 		 * @param {boolean} isMobile - Whether the device is mobile
 		 */
-		setupEventHandlers: function(modal, isMobile) {
+		setupEventHandlers: function (modal, isMobile) {
 			// Close button handler
 			var closeButton = document.getElementById('close-locker-modal');
 			if (closeButton) {
-				closeButton.onclick = function(e) {
+				closeButton.onclick = function (e) {
 					e.preventDefault();
 					e.stopPropagation();
 					EuroparcelModal.close();
@@ -108,7 +107,7 @@
 
 			// Click outside to close (desktop only)
 			if (!isMobile) {
-				modal.onclick = function(e) {
+				modal.onclick = function (e) {
 					if (e.target === this) {
 						EuroparcelModal.close();
 					}
@@ -118,13 +117,13 @@
 			// Prevent clicks inside modal from closing it
 			var modalContent = modal.querySelector('div');
 			if (modalContent) {
-				modalContent.onclick = function(e) {
+				modalContent.onclick = function (e) {
 					e.stopPropagation();
 				};
 			}
 
 			// Escape key handler
-			var escapeHandler = function(e) {
+			var escapeHandler = function (e) {
 				if (e.key === 'Escape' || e.keyCode === 27) {
 					EuroparcelModal.close();
 				}
@@ -136,13 +135,13 @@
 
 		/**
 		 * Close the modal
-		 * 
+		 *
 		 * Removes the modal from DOM and restores original page styles.
 		 * Cleans up event listeners to prevent memory leaks.
-		 * 
+		 *
 		 * @since 1.0.0
 		 */
-		close: function() {
+		close: function () {
 			var modal = document.getElementById('europarcel-iframe-modal');
 			if (!modal) {
 				return;
@@ -166,8 +165,6 @@
 
 			// Remove modal from DOM
 			modal.remove();
-		}
+		},
 	};
-
-
 })(jQuery);

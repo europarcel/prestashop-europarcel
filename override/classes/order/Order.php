@@ -1,10 +1,21 @@
 <?php
 
-class Order extends OrderCore {
+/**
+ * EuroParcel Order Override
+ *
+ * Extends PrestaShop Order class to include EuroParcel locker fields
+ *
+ * @author    EuroParcel
+ * @copyright Copyright (c) 2025 EuroParcel
+ * @license   http://opensource.org/licenses/afl-3.0.php  Academic Free License (AFL 3.0)
+ */
 
+class Order extends OrderCore
+{
     public $locker_id;
 
-    public function __construct($id = null) {
+    public function __construct($id = null)
+    {
         self::$definition['fields']['europarcel_locker_id'] = array(
             'type' => self::TYPE_INT,
             'validate' => 'isUnsignedId',
@@ -15,15 +26,16 @@ class Order extends OrderCore {
             'validate' => 'isUnsignedId',
             'required' => false
         );
-         self::$definition['fields']['europarcel_service_id'] = array(
-            'type' => self::TYPE_INT,
-            'validate' => 'isUnsignedId',
-            'required' => false
+        self::$definition['fields']['europarcel_service_id'] = array(
+           'type' => self::TYPE_INT,
+           'validate' => 'isUnsignedId',
+           'required' => false
         );
         parent::__construct($id);
     }
 
-    public function getWebserviceParameters($ws_params_attribute_name = null) {
+    public function getWebserviceParameters($ws_params_attribute_name = null)
+    {
         $params = parent::getWebserviceParameters($ws_params_attribute_name);
         $params['fields']['europarcel_locker_id'] = array(
             'sqlId' => 'europarcel_locker_id',

@@ -1,5 +1,4 @@
 <?php
-
 /**
  * EuroParcel AJAX Controller
  *
@@ -9,6 +8,9 @@
  * @copyright Copyright (c) 2025 EuroParcel
  * @license   http://opensource.org/licenses/afl-3.0.php  Academic Free License (AFL 3.0)
  */
+if (!defined('_PS_VERSION_')) {
+    exit;
+}
 
 class EuroparcelAjaxModuleFrontController extends ModuleFrontController
 {
@@ -21,7 +23,7 @@ class EuroparcelAjaxModuleFrontController extends ModuleFrontController
                 $this->saveLockerSession();
                 break;
             default:
-                die(json_encode(['success' => false, 'error' => 'Invalid action']));
+                exit(json_encode(['success' => false, 'error' => 'Invalid action']));
         }
     }
 
@@ -32,7 +34,7 @@ class EuroparcelAjaxModuleFrontController extends ModuleFrontController
         $expectedToken = Tools::getToken(false);
 
         if (!$token || !$expectedToken || $token !== $expectedToken) {
-            die(json_encode(['success' => false, 'error' => 'Invalid token']));
+            exit(json_encode(['success' => false, 'error' => 'Invalid token']));
         }
 
         $lockerData = Tools::getValue('locker_data');
@@ -41,16 +43,17 @@ class EuroparcelAjaxModuleFrontController extends ModuleFrontController
             // Validate that it is valid JSON
             $decoded = json_decode($lockerData, true);
             if (json_last_error() !== JSON_ERROR_NONE) {
-                die(json_encode(['success' => false, 'error' => 'Invalid JSON data']));
+                exit(json_encode(['success' => false, 'error' => 'Invalid JSON data']));
             }
 
             // Save in PrestaShop session
             $this->context->cookie->__set('europarcel_locker_data', $lockerData);
             $this->context->cookie->write();
 
-            die(json_encode(['success' => true]));
+            exit(json_encode(['success' => true]));
         }
 
-        die(json_encode(['success' => false, 'error' => 'Invalid data']));
+        exit(json_encode(['success' => false, 'error' => 'Invalid data']));
     }
 }
+

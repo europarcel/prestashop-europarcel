@@ -1,3 +1,10 @@
+{*
+ * EuroParcel Carrier Extra Content Template
+ *
+ * @author    EuroParcel
+ * @copyright Copyright (c) 2025 EuroParcel
+ * @license   http://opensource.org/licenses/afl-3.0.php  Academic Free License (AFL 3.0)
+ *}
 <div class="europarcel-locker-selection">
     {if $selected_locker}
         <div class="alert alert-success mb-2">

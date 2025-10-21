@@ -1,5 +1,9 @@
 /**
  * EuroParcel Checkout integration for PrestaShop
+ *
+ * @author    EuroParcel
+ * @copyright Copyright (c) 2025 EuroParcel
+ * @license   http://opensource.org/licenses/afl-3.0.php  Academic Free License (AFL 3.0)
  */
 document.addEventListener('DOMContentLoaded', function () {
 	// Buttons for opening the modal

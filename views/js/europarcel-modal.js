@@ -2,11 +2,10 @@
  * EuroParcel Modal functionality
  *
  * Handles the display and interaction of the locker selection modal iframe.
- * Follows WordPress JavaScript coding standards.
  *
- * @package    Europarcel
- * @subpackage Assets/JavaScript
- * @since      1.0.0
+ * @author    EuroParcel
+ * @copyright Copyright (c) 2025 EuroParcel
+ * @license   http://opensource.org/licenses/afl-3.0.php  Academic Free License (AFL 3.0)
  */
 
 (function ($) {

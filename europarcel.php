@@ -13,8 +13,8 @@ if (!defined('_PS_VERSION_')) {
 
 class EuroParcel extends Module
 {
-    private $carrier_name = 'EuroParcel';
-    private $carrier_locker_name = 'EuroParcel Locker';
+    private $carrier_name = 'EuroParcel - Home Delivery';
+    private $carrier_locker_name = 'EuroParcel Locker Delivery';
     private $carrier_delay = 'Delivery in 24-48 hours';
     private $carrier_locker_delay = 'Next day delivery';
     private $available_lockers = [
@@ -802,14 +802,17 @@ class EuroParcel extends Module
                         <label>Available locker types for customers:</label>
                         <div class="checkbox">';
 
+        $module_path = $this->context->shop->getBaseURL(true) . 'modules/' . $this->name . '/';
+        
         foreach ($this->available_lockers as $key => $label) {
             $checked = in_array($key, $selected_lockers) ? 'checked' : '';
             $logo = $this->getCarrierLogo($key);
-            $logoHtml = $logo ? '<img src="' . $this->_path . 'views/img/' . $logo . '" alt="' . $key . '" style="width: 24px; height: 24px; vertical-align: middle; margin-right: 8px;">' : '';
-            $output .= '<div class="checkbox">
+            $logoUrl = $logo ? $module_path . 'views/img/' . $logo : '';
+            $logoHtml = $logoUrl ? '<img src="' . $logoUrl . '" alt="' . $key . '" style="height: 20px; width: auto; object-fit: contain; vertical-align: middle; margin-right: 10px; max-width: 60px;">' : '';
+            $output .= '<div class="checkbox" style="margin-bottom: 10px;">
                                 <label style="display: flex; align-items: center;">
                                     <input type="checkbox" name="EUROPARCEL_LOCKER_TYPES[]" value="' . $key . '" ' . $checked . ' style="margin-right: 8px;">
-                                    ' . $logoHtml . $label . '
+                                    ' . $logoHtml . '<span>' . $label . '</span>
                                 </label>
                             </div>';
         }

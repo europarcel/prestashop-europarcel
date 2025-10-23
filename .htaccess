@@ -1,0 +1,23 @@
+# PrestaShop Module Security
+Order deny,allow
+Deny from all
+
+# Allow the main module file
+<Files "europarcel.php">
+    Allow from all
+</Files>
+
+# Allow all PHP files in controllers directory (needed for AJAX, frontend, etc.)
+<FilesMatch "\.php$">
+    Allow from all
+</FilesMatch>
+
+# Allow all webp files
+<FilesMatch "\.webp$">
+    Allow from all
+</FilesMatch>
+
+# Allow all js files
+<FilesMatch "\.js$">
+    Allow from all
+</FilesMatch>

@@ -3,7 +3,7 @@
  * Security: Prevent directory listing
  *
  * @author    EuroParcel
- * @copyright Copyright (c) 2025 EuroParcel
+ * @copyright Copyright (c) EuroParcel
  * @license   http://opensource.org/licenses/afl-3.0.php  Academic Free License (AFL 3.0)
  */
 header('Expires: Mon, 26 Jul 1997 05:00:00 GMT');
@@ -15,4 +15,3 @@ header('Pragma: no-cache');
 
 header('Location: ../../../');
 exit;
-

@@ -56,4 +56,3 @@ class EuroparcelAjaxModuleFrontController extends ModuleFrontController
         exit(json_encode(['success' => false, 'error' => 'Invalid data']));
     }
 }
-

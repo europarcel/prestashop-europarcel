@@ -5,6 +5,7 @@
  * @author    EuroParcel
  * @copyright Copyright (c) 2025 EuroParcel
  * @license   http://opensource.org/licenses/afl-3.0.php  Academic Free License (AFL 3.0)
+ *
  * @version   1.0.0
  */
 if (!defined('_PS_VERSION_')) {
@@ -130,29 +131,31 @@ class EuroParcel extends Module
         if (!$this->addCustomerLockerField()) {
             return false;
         }
-        return parent::install() &&
-                $this->createEuroParcelCarrier() &&
-                $this->createEuroParcelCarrierLocker() &&
-                $this->registerHook('displayHeader') &&
-                $this->registerHook('displayCarrierExtraContent') &&
-                $this->registerHook('actionValidateOrder') &&
-                $this->registerHook('displayAdminOrderMain') &&
-                $this->registerHook('actionValidateStepComplete') &&
-                $this->registerHook('displayOrderConfirmation') &&
-                $this->registerHook('actionCarrierUpdate') &&
-                Configuration::updateValue('EUROPARCEL_LOCKER_TYPES', '') &&
-                Configuration::updateValue('EUROPARCEL_DEFAULT_CARRIER', 'cargus_national');
+
+        return parent::install()
+                && $this->createEuroParcelCarrier()
+                && $this->createEuroParcelCarrierLocker()
+                && $this->registerHook('displayHeader')
+                && $this->registerHook('displayCarrierExtraContent')
+                && $this->registerHook('actionValidateOrder')
+                && $this->registerHook('displayAdminOrderMain')
+                && $this->registerHook('actionValidateStepComplete')
+                && $this->registerHook('displayOrderConfirmation')
+                && $this->registerHook('actionCarrierUpdate')
+                && Configuration::updateValue('EUROPARCEL_LOCKER_TYPES', '')
+                && Configuration::updateValue('EUROPARCEL_DEFAULT_CARRIER', 'cargus_national');
     }
 
     public function uninstall()
     {
         $this->deleteEuroParcelCarrier();
         $this->deleteEuroParcelCarrierLocker();
-        return Configuration::deleteByName('EUROPARCEL_CARRIER_ID') &&
-                Configuration::deleteByName('EUROPARCEL_LOCKER_CARRIER_ID') &&
-                Configuration::deleteByName('EUROPARCEL_LOCKER_TYPES') &&
-                Configuration::deleteByName('EUROPARCEL_DEFAULT_CARRIER') &&
-                parent::uninstall();
+
+        return Configuration::deleteByName('EUROPARCEL_CARRIER_ID')
+                && Configuration::deleteByName('EUROPARCEL_LOCKER_CARRIER_ID')
+                && Configuration::deleteByName('EUROPARCEL_LOCKER_TYPES')
+                && Configuration::deleteByName('EUROPARCEL_DEFAULT_CARRIER')
+                && parent::uninstall();
     }
 
     private function addLockerIdField()
@@ -165,6 +168,7 @@ class EuroParcel extends Module
             foreach ($columns as $column) {
                 if ($column['Field'] === 'europarcel_locker_id') {
                     $columnExists = true;
+
                     break;
                 }
             }
@@ -172,14 +176,16 @@ class EuroParcel extends Module
 
         if (!$columnExists) {
             // Add the europarcel_locker_id field to the orders table
-            $sql = "ALTER TABLE `" . _DB_PREFIX_ . "orders`
-                    ADD `europarcel_locker_id` INT UNSIGNED NULL DEFAULT NULL AFTER `id_carrier`";
+            $sql = 'ALTER TABLE `' . _DB_PREFIX_ . 'orders`
+                    ADD `europarcel_locker_id` INT UNSIGNED NULL DEFAULT NULL AFTER `id_carrier`';
 
             if (!Db::getInstance()->execute($sql)) {
                 $this->_errors[] = $this->l('Error adding europarcel_locker_id field to orders table');
+
                 return false;
             }
         }
+
         return true;
     }
 
@@ -193,6 +199,7 @@ class EuroParcel extends Module
             foreach ($columns as $column) {
                 if ($column['Field'] === 'europarcel_carrier_id') {
                     $columnExists = true;
+
                     break;
                 }
             }
@@ -200,14 +207,16 @@ class EuroParcel extends Module
 
         if (!$columnExists) {
             // Add the europarcel_carrier_id field to the orders table
-            $sql = "ALTER TABLE `" . _DB_PREFIX_ . "orders`
-                    ADD `europarcel_carrier_id` INT UNSIGNED NULL DEFAULT NULL AFTER `id_carrier`";
+            $sql = 'ALTER TABLE `' . _DB_PREFIX_ . 'orders`
+                    ADD `europarcel_carrier_id` INT UNSIGNED NULL DEFAULT NULL AFTER `id_carrier`';
 
             if (!Db::getInstance()->execute($sql)) {
                 $this->_errors[] = $this->l('Error adding europarcel_carrier_id field to orders table');
+
                 return false;
             }
         }
+
         return true;
     }
 
@@ -221,6 +230,7 @@ class EuroParcel extends Module
             foreach ($columns as $column) {
                 if ($column['Field'] === 'europarcel_locker_data') {
                     $columnExists = true;
+
                     break;
                 }
             }
@@ -228,14 +238,16 @@ class EuroParcel extends Module
 
         if (!$columnExists) {
             // Add the europarcel_locker_data field to the customer table
-            $sql = "ALTER TABLE `" . _DB_PREFIX_ . "customer`
-                    ADD `europarcel_locker_data` TEXT NULL DEFAULT NULL";
+            $sql = 'ALTER TABLE `' . _DB_PREFIX_ . 'customer`
+                    ADD `europarcel_locker_data` TEXT NULL DEFAULT NULL';
 
             if (!Db::getInstance()->execute($sql)) {
                 $this->_errors[] = $this->l('Error adding europarcel_locker_data field to customer table');
+
                 return false;
             }
         }
+
         return true;
     }
 
@@ -249,6 +261,7 @@ class EuroParcel extends Module
             foreach ($columns as $column) {
                 if ($column['Field'] === 'europarcel_service_id') {
                     $columnExists = true;
+
                     break;
                 }
             }
@@ -256,14 +269,16 @@ class EuroParcel extends Module
 
         if (!$columnExists) {
             // Add the europarcel_service_id field to the orders table
-            $sql = "ALTER TABLE `" . _DB_PREFIX_ . "orders`
-                    ADD `europarcel_service_id` INT UNSIGNED NULL DEFAULT NULL AFTER `europarcel_carrier_id`";
+            $sql = 'ALTER TABLE `' . _DB_PREFIX_ . 'orders`
+                    ADD `europarcel_service_id` INT UNSIGNED NULL DEFAULT NULL AFTER `europarcel_carrier_id`';
 
             if (!Db::getInstance()->execute($sql)) {
                 $this->_errors[] = $this->l('Error adding europarcel_service_id field to orders table');
+
                 return false;
             }
         }
+
         return true;
     }
 
@@ -297,6 +312,7 @@ class EuroParcel extends Module
         // Add the carrier
         if (!$carrier->add()) {
             $this->_errors[] = $this->l('Error creating EuroParcel carrier');
+
             return false;
         }
 
@@ -321,6 +337,7 @@ class EuroParcel extends Module
         $rangePrice->delimiter2 = 10000.0;
         if (!$rangePrice->add()) {
             $this->_errors[] = $this->l('Error creating price range');
+
             return false;
         }
 
@@ -331,6 +348,7 @@ class EuroParcel extends Module
         $rangeWeight->delimiter2 = 10000.0;
         if (!$rangeWeight->add()) {
             $this->_errors[] = $this->l('Error creating weight range');
+
             return false;
         }
 
@@ -385,6 +403,7 @@ class EuroParcel extends Module
         // Add the carrier
         if (!$carrier->add()) {
             $this->_errors[] = $this->l('Error creating EuroParcel Locker carrier');
+
             return false;
         }
 
@@ -409,6 +428,7 @@ class EuroParcel extends Module
         $rangePrice->delimiter2 = 10000.0;
         if (!$rangePrice->add()) {
             $this->_errors[] = $this->l('Error creating price range for locker');
+
             return false;
         }
 
@@ -419,6 +439,7 @@ class EuroParcel extends Module
         $rangeWeight->delimiter2 = 10000.0;
         if (!$rangeWeight->add()) {
             $this->_errors[] = $this->l('Error creating weight range for locker');
+
             return false;
         }
 
@@ -447,12 +468,14 @@ class EuroParcel extends Module
     {
         $carrier_id = Configuration::get('EUROPARCEL_CARRIER_ID');
         if ($carrier_id) {
-            $carrier = new Carrier((int)$carrier_id);
+            $carrier = new Carrier((int) $carrier_id);
             if (Validate::isLoadedObject($carrier)) {
                 $carrier->deleted = true;
+
                 return $carrier->update();
             }
         }
+
         return true;
     }
 
@@ -460,12 +483,14 @@ class EuroParcel extends Module
     {
         $carrier_id = Configuration::get('EUROPARCEL_LOCKER_CARRIER_ID');
         if ($carrier_id) {
-            $carrier = new Carrier((int)$carrier_id);
+            $carrier = new Carrier((int) $carrier_id);
             if (Validate::isLoadedObject($carrier)) {
                 $carrier->deleted = true;
+
                 return $carrier->update();
             }
         }
+
         return true;
     }
 
@@ -492,7 +517,6 @@ class EuroParcel extends Module
 
     public function hookDisplayCarrierExtraContent($params)
     {
-
         $carrier = $params['carrier'];
         $locker_carrier_id = (int) Configuration::get('EUROPARCEL_LOCKER_CARRIER_ID');
 
@@ -584,6 +608,7 @@ class EuroParcel extends Module
                 }
             } else {
                 $this->context->controller->errors[] = $this->l('Please select a EuroParcel locker before proceeding.');
+
                 return false; // Important: return false to block
             }
         } elseif ((int) $order->id_carrier === $carrier_id) {
@@ -609,6 +634,7 @@ class EuroParcel extends Module
             }
         }
         $this->clearLockerFromSession();
+
         return '';
     }
 
@@ -658,11 +684,11 @@ class EuroParcel extends Module
         return Db::getInstance()->update(
             'orders',
             [
-                'europarcel_locker_id' => (int)$europarcel_locker_id,
-                'europarcel_service_id' => 2,
-                'europarcel_carrier_id' => (int)$europarcel_carrier_id,
-            ],
-            'id_order = ' . (int)$order_id
+                            'europarcel_locker_id' => (int) $europarcel_locker_id,
+                            'europarcel_service_id' => 2,
+                            'europarcel_carrier_id' => (int) $europarcel_carrier_id,
+                        ],
+            'id_order = ' . (int) $order_id
         );
     }
 
@@ -672,10 +698,10 @@ class EuroParcel extends Module
         return Db::getInstance()->update(
             'orders',
             [
-                'europarcel_service_id' => 1,
-                'europarcel_carrier_id' => (int)$europarcel_carrier_id,
-            ],
-            'id_order = ' . (int)$order_id
+                            'europarcel_service_id' => 1,
+                            'europarcel_carrier_id' => (int) $europarcel_carrier_id,
+                        ],
+            'id_order = ' . (int) $order_id
         );
     }
 
@@ -683,8 +709,8 @@ class EuroParcel extends Module
     {
         $sql = new DbQuery();
         $sql->select('europarcel_locker_id')
-            ->from('orders')
-            ->where('id_order = ' . (int)$order_id);
+                ->from('orders')
+                ->where('id_order = ' . (int) $order_id);
 
         return Db::getInstance()->getValue($sql);
     }
@@ -694,6 +720,7 @@ class EuroParcel extends Module
         if (isset($this->context->cookie->europarcel_locker_data)) {
             return json_decode($this->context->cookie->europarcel_locker_data, true);
         }
+
         return null;
     }
 
@@ -718,7 +745,9 @@ class EuroParcel extends Module
 
     /**
      * Get carrier logo path
+     *
      * @param string $carrier_key Carrier key (e.g., 'cargus_national', 'easybox')
+     *
      * @return string Logo file name or empty string if not found
      */
     public function getCarrierLogo($carrier_key)
@@ -726,6 +755,7 @@ class EuroParcel extends Module
         if (isset($this->carrier_settings[$carrier_key]['logo'])) {
             return $this->carrier_settings[$carrier_key]['logo'];
         }
+
         return '';
     }
 
@@ -736,7 +766,7 @@ class EuroParcel extends Module
         return Db::getInstance()->update(
             'customer',
             ['europarcel_locker_data' => pSQL($lockerDataJson)],
-            'id_customer = ' . (int)$id_customer
+            'id_customer = ' . (int) $id_customer
         );
     }
 
@@ -747,13 +777,14 @@ class EuroParcel extends Module
     {
         $sql = new DbQuery();
         $sql->select('europarcel_locker_data')
-            ->from('customer')
-            ->where('id_customer = ' . (int)$id_customer);
+                ->from('customer')
+                ->where('id_customer = ' . (int) $id_customer);
 
         $result = Db::getInstance()->getValue($sql);
 
         if ($result) {
             $lockerData = json_decode($result, true);
+
             return $lockerData ?: null;
         }
 
@@ -777,62 +808,40 @@ class EuroParcel extends Module
             }
             $output .= $this->displayConfirmation('Settings have been saved successfully.');
         }
-
+        // Prepare data for template
         $carrier_id = Configuration::get('EUROPARCEL_CARRIER_ID');
         $locker_carrier_id = Configuration::get('EUROPARCEL_LOCKER_CARRIER_ID');
         $selected_lockers = explode(',', Configuration::get('EUROPARCEL_LOCKER_TYPES'));
         $default_carrier = Configuration::get('EUROPARCEL_DEFAULT_CARRIER');
-        $output .= '
-        <div class="panel">
-            <div class="panel-heading">EuroParcel Settings</div>
-            <div class="panel-body">
-                <form method="post">
-                <div class="form-group">
-                    <label>Default carrier for home delivery:</label>
-                    <select name="EUROPARCEL_DEFAULT_CARRIER" class="form-control">';
+        $carriers = [];
         foreach ($this->available_carriers as $key => $label) {
-            $selected = ($key == $default_carrier) ? 'selected' : '';
-            $output .= '<option value="' . $key . '" ' . $selected . '>' . $label . '</option>';
+            $carriers[] = [// Folosește [] pentru a adăuga, nu ['key']
+                'key' => $key,
+                'name' => $label,
+            ];
         }
-
-        $output .= '</select>
-                    <p class="help-block">Choose the carrier to be used when customers select home delivery</p>
-                    </div>
-                    <div class="form-group">
-                        <label>Available locker types for customers:</label>
-                        <div class="checkbox">';
-
-        $module_path = $this->context->shop->getBaseURL(true) . 'modules/' . $this->name . '/';
-        
+        $carrier_logos = [];
+        $available_lockers = [];
         foreach ($this->available_lockers as $key => $label) {
-            $checked = in_array($key, $selected_lockers) ? 'checked' : '';
-            $logo = $this->getCarrierLogo($key);
-            $logoUrl = $logo ? $module_path . 'views/img/' . $logo : '';
-            $logoHtml = $logoUrl ? '<img src="' . $logoUrl . '" alt="' . $key . '" style="height: 20px; width: auto; object-fit: contain; vertical-align: middle; margin-right: 10px; max-width: 60px;">' : '';
-            $output .= '<div class="checkbox" style="margin-bottom: 10px;">
-                                <label style="display: flex; align-items: center;">
-                                    <input type="checkbox" name="EUROPARCEL_LOCKER_TYPES[]" value="' . $key . '" ' . $checked . ' style="margin-right: 8px;">
-                                    ' . $logoHtml . '<span>' . $label . '</span>
-                                </label>
-                            </div>';
+            $available_lockers[] = [// Folosește [] pentru a adăuga, nu ['key']
+                'key' => $key,
+                'name' => $label,
+            ];
+            $carrier_logos[$key] = $this->getCarrierLogo($key);
         }
-
-        $output .= '</div>
-                        <p class="help-block">Select the locker types that customers can choose</p>
-                    </div>
-                    <button type="submit" name="save_europarcel_settings" class="btn btn-primary">Save Settings</button>
-                </form>
-            </div>
-        </div>
-        
-        <div class="panel">
-            <div class="panel-heading">Carrier Information</div>
-            <div class="panel-body">
-                <p><strong>EuroParcel Carrier ID:</strong> ' . $carrier_id . '</p>
-                <p><strong>EuroParcel Locker Carrier ID:</strong> ' . $locker_carrier_id . '</p>
-                <p><strong>locker_id field in orders table:</strong> YES</p>
-            </div>
-        </div>';
+        // Assign varibles for template
+        $this->context->smarty->assign([
+            'post_url' => $this->context->link->getAdminLink('AdminModules', true) . '&configure=' . $this->name . '&tab_module=' . $this->tab . '&module_name=' . $this->name,
+            'carriers' => $carriers,
+            'default_carrier' => $default_carrier,
+            'available_lockers' => $available_lockers,
+            'selected_lockers' => $selected_lockers,
+            'carrier_logos' => $carrier_logos,
+            'module_path' => $this->context->shop->getBaseURL(true) . 'modules/' . $this->name . '/',
+            'carrier_id' => $carrier_id,
+            'locker_carrier_id' => $locker_carrier_id,
+        ]);
+        $output .= $this->display(__FILE__, 'views/templates/admin/configuration.tpl');
 
         return $output;
     }

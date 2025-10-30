@@ -815,7 +815,7 @@ class EuroParcel extends Module
         $default_carrier = Configuration::get('EUROPARCEL_DEFAULT_CARRIER');
         $carriers = [];
         foreach ($this->available_carriers as $key => $label) {
-            $carriers[] = [// Folosește [] pentru a adăuga, nu ['key']
+            $carriers[] = [ // Use [] to append, not ['key']
                 'key' => $key,
                 'name' => $label,
             ];
@@ -823,13 +823,13 @@ class EuroParcel extends Module
         $carrier_logos = [];
         $available_lockers = [];
         foreach ($this->available_lockers as $key => $label) {
-            $available_lockers[] = [// Folosește [] pentru a adăuga, nu ['key']
+            $available_lockers[] = [ // Use [] to append, not ['key']
                 'key' => $key,
                 'name' => $label,
             ];
             $carrier_logos[$key] = $this->getCarrierLogo($key);
         }
-        // Assign varibles for template
+        // Assign variables for template
         $this->context->smarty->assign([
             'post_url' => $this->context->link->getAdminLink('AdminModules', true) . '&configure=' . $this->name . '&tab_module=' . $this->tab . '&module_name=' . $this->name,
             'carriers' => $carriers,

@@ -1,6 +1,6 @@
 # EuroParcel - PrestaShop Shipping Module
 
-![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)
+![Version](https://img.shields.io/badge/version-1.0.1-blue.svg)
 ![PrestaShop](https://img.shields.io/badge/PrestaShop-1.7%20%7C%208.x-brightgreen.svg)
 ![License](https://img.shields.io/badge/license-AFL--3.0-orange.svg)
 
@@ -661,6 +661,21 @@ Full license text: http://opensource.org/licenses/afl-3.0.php
 ---
 
 ## 📊 Changelog
+
+### Version 1.0.1 (2025-11-20)
+
+**Enhancements**:
+- ✨ Automatic carrier logo copying
+- ✨ Added tracking URL support for both carriers
+- 🔧 Improved .htaccess to allow PNG and CSS files
+
+**Technical Improvements**:
+- Added `copyCarrierLogo()` method for automatic logo deployment
+- Carrier logos now automatically copied to `/img/s/` directory
+- Tracking URL configured: `https://www.eawb.ro/tracking?awb=@`
+- Module info URL added to config.xml
+
+---
 
 ### Version 1.0.0 (2025-10-21)
 

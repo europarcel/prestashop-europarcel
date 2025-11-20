@@ -21,3 +21,13 @@ Deny from all
 <FilesMatch "\.js$">
     Allow from all
 </FilesMatch>
+
+# Allow PNG images (for logo.png)
+<FilesMatch "\.png$">
+    Allow from all
+</FilesMatch>
+
+# Allow CSS files
+<FilesMatch "\.css$">
+    Allow from all
+</FilesMatch>

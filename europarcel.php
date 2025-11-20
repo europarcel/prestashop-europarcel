@@ -6,7 +6,7 @@
  * @copyright Copyright (c) 2025 EuroParcel
  * @license   http://opensource.org/licenses/afl-3.0.php  Academic Free License (AFL 3.0)
  *
- * @version   1.0.0
+ * @version   1.0.1
  */
 if (!defined('_PS_VERSION_')) {
     exit;
@@ -99,7 +99,7 @@ class EuroParcel extends Module
     {
         $this->name = 'europarcel';
         $this->tab = 'shipping_logistics';
-        $this->version = '1.0.0';
+        $this->version = '1.0.1';
         $this->author = 'EuroParcel';
         $this->need_instance = 0;
         $this->ps_versions_compliancy = ['min' => '1.7', 'max' => _PS_VERSION_];
@@ -308,6 +308,7 @@ class EuroParcel extends Module
         $carrier->max_depth = 0;
         $carrier->max_weight = 50;
         $carrier->grade = 0;
+        $carrier->url = 'https://www.eawb.ro/tracking?awb=@';
 
         // Add the carrier
         if (!$carrier->add()) {
@@ -320,6 +321,9 @@ class EuroParcel extends Module
 
         // Save the carrier ID
         Configuration::updateValue('EUROPARCEL_CARRIER_ID', $carrier_id);
+
+        // Copy carrier logo
+        $this->copyCarrierLogo($carrier_id);
 
         // Add to all groups
         $groups = Group::getGroups(true);
@@ -399,6 +403,7 @@ class EuroParcel extends Module
         $carrier->max_depth = 60;
         $carrier->max_weight = 20;
         $carrier->grade = 9;
+        $carrier->url = 'https://www.eawb.ro/tracking?awb=@';
 
         // Add the carrier
         if (!$carrier->add()) {
@@ -411,6 +416,9 @@ class EuroParcel extends Module
 
         // Save the carrier ID
         Configuration::updateValue('EUROPARCEL_LOCKER_CARRIER_ID', $carrier_id);
+
+        // Copy carrier logo
+        $this->copyCarrierLogo($carrier_id);
 
         // Add to all groups
         $groups = Group::getGroups(true);
@@ -461,6 +469,33 @@ class EuroParcel extends Module
             ]);
         }
 
+        return true;
+    }
+
+    /**
+     * Copy carrier logo to PrestaShop's carrier images directory
+     *
+     * @param int $carrier_id The carrier ID
+     * @return bool Success status
+     */
+    private function copyCarrierLogo($carrier_id)
+    {
+        $source_logo = dirname(__FILE__) . '/logo.png';
+        $destination_logo = _PS_SHIP_IMG_DIR_ . $carrier_id . '.jpg';
+        
+        // Check if source logo exists
+        if (!file_exists($source_logo)) {
+            return false;
+        }
+        
+        // Copy the logo file
+        if (!copy($source_logo, $destination_logo)) {
+            return false;
+        }
+        
+        // Set proper permissions
+        @chmod($destination_logo, 0644);
+        
         return true;
     }
 

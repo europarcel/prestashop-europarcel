@@ -14,7 +14,7 @@
 	/**
 	 * EuroParcel Modal object
 	 *
-	 * @since 1.0.1
+	 * @since 1.0.2
 	 */
 	window.EuroparcelModal = {
 		/**
@@ -23,7 +23,7 @@
 		 * Creates and displays a modal dialog containing an iframe with the locker map.
 		 * Handles both desktop and mobile responsive display.
 		 *
-		 * @since 1.0.1
+		 * @since 1.0.2
 		 * @param {string} iframeUrl - The URL to load in the iframe
 		 */
 		show: function (iframeUrl) {
@@ -89,7 +89,7 @@
 		 *
 		 * Configures click handlers, escape key handler, and other modal interactions.
 		 *
-		 * @since 1.0.1
+		 * @since 1.0.2
 		 * @param {HTMLElement} modal - The modal element
 		 * @param {boolean} isMobile - Whether the device is mobile
 		 */
@@ -138,7 +138,7 @@
 		 * Removes the modal from DOM and restores original page styles.
 		 * Cleans up event listeners to prevent memory leaks.
 		 *
-		 * @since 1.0.1
+		 * @since 1.0.2
 		 */
 		close: function () {
 			var modal = document.getElementById('europarcel-iframe-modal');

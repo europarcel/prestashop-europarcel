@@ -1,6 +1,6 @@
 # EuroParcel - PrestaShop Shipping Module
 
-![Version](https://img.shields.io/badge/version-1.0.3-blue.svg)
+![Version](https://img.shields.io/badge/version-1.0.4-blue.svg)
 ![PrestaShop](https://img.shields.io/badge/PrestaShop-1.7%20%7C%208.x-brightgreen.svg)
 ![License](https://img.shields.io/badge/license-AFL--3.0-orange.svg)
 
@@ -662,7 +662,7 @@ Full license text: http://opensource.org/licenses/afl-3.0.php
 
 ## 📊 Changelog
 
-### Version 1.0.3 (2025-12-23)
+### Version 1.0.4 (2025-12-23)
 
 **Bug Fixes**:
 - 🐛 Fixed PHP 8.2+ deprecation warning: "Creation of dynamic property Order::$europarcel_locker_id is deprecated"

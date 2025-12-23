@@ -5,7 +5,7 @@
 
 # Set variables
 MODULE_NAME="europarcel"
-VERSION="1.0.3"
+VERSION="1.0.4"
 DESKTOP_PATH="$HOME/Desktop"
 OUTPUT_ZIP="${DESKTOP_PATH}/${MODULE_NAME}.zip"
 TEMP_DIR="/tmp/${MODULE_NAME}_build"

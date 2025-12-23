@@ -2,7 +2,7 @@
 <module>
     <name>europarcel</name>
     <displayName><![CDATA[EuroParcel]]></displayName>
-    <version><![CDATA[1.0.3]]></version>
+    <version><![CDATA[1.0.4]]></version>
     <description><![CDATA[Create and manage the EuroParcel carrier for home delivery and locker pickup]]></description>
     <author><![CDATA[EuroParcel]]></author>
     <tab><![CDATA[shipping_logistics]]></tab>

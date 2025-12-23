@@ -5,7 +5,7 @@
 
 # Set variables
 MODULE_NAME="europarcel"
-VERSION="1.0.2"
+VERSION="1.0.3"
 DESKTOP_PATH="$HOME/Desktop"
 OUTPUT_ZIP="${DESKTOP_PATH}/${MODULE_NAME}.zip"
 TEMP_DIR="/tmp/${MODULE_NAME}_build"
@@ -27,6 +27,8 @@ cp config.xml "$TEMP_DIR/${MODULE_NAME}/"
 cp logo.png "$TEMP_DIR/${MODULE_NAME}/"
 cp index.php "$TEMP_DIR/${MODULE_NAME}/"
 cp .htaccess "$TEMP_DIR/${MODULE_NAME}/"
+cp README.md "$TEMP_DIR/${MODULE_NAME}/"
+cp LICENSE "$TEMP_DIR/${MODULE_NAME}/"
 
 # Controllers
 cp -r controllers "$TEMP_DIR/${MODULE_NAME}/"
@@ -45,7 +47,7 @@ fi
 # Create zip file (excluding git and other unnecessary files)
 echo "Creating zip archive..."
 cd "$TEMP_DIR"
-zip -r "$OUTPUT_ZIP" "$MODULE_NAME" -q -x "*/.git/*" "*/.git" "*.DS_Store" "*/.gitignore" "*/build.sh" "*/README.md" "*/LICENSE"
+zip -r "$OUTPUT_ZIP" "$MODULE_NAME" -q -x "*/.git/*" "*/.git" "*.DS_Store" "*/.gitignore" "*/build.sh"
 
 # Clean up temp directory
 rm -rf "$TEMP_DIR"

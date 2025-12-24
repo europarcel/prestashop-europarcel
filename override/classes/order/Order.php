@@ -14,7 +14,14 @@ if (!defined('_PS_VERSION_')) {
 
 class Order extends OrderCore
 {
-    public $locker_id;
+    /** @var int|null EuroParcel locker ID */
+    public $europarcel_locker_id;
+
+    /** @var int|null EuroParcel carrier ID */
+    public $europarcel_carrier_id;
+
+    /** @var int|null EuroParcel service ID */
+    public $europarcel_service_id;
 
     public function __construct($id = null)
     {

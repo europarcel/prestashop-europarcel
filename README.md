@@ -1,6 +1,6 @@
 # EuroParcel - PrestaShop Shipping Module
 
-![Version](https://img.shields.io/badge/version-1.0.4-blue.svg)
+![Version](https://img.shields.io/badge/version-1.0.5-blue.svg)
 ![PrestaShop](https://img.shields.io/badge/PrestaShop-1.7%20%7C%208.x-brightgreen.svg)
 ![License](https://img.shields.io/badge/license-AFL--3.0-orange.svg)
 
@@ -389,6 +389,10 @@ europarcel/
 │           ├── index.php
 │           └── Order.php       # Adds locker fields to Order class
 │
+├── upgrade/
+│   ├── index.php
+│   └── upgrade-1.0.5.php       # Puts the new logo on carriers created by earlier versions
+│
 └── views/
     ├── index.php
     ├── css/
@@ -661,6 +665,18 @@ Full license text: http://opensource.org/licenses/afl-3.0.php
 ---
 
 ## 📊 Changelog
+
+### Version 1.0.5 (2026-10-23)
+
+**Enhancements**:
+- 🎨 New eAWB logo, in the module list and next to both EuroParcel carriers at checkout
+- Shops updating from an earlier version get the new logo on their EuroParcel carriers too; a carrier logo the merchant uploaded is kept
+
+**Bug Fixes**:
+- 🐛 A customer's saved locker is checked with EuroParcel before checkout reuses it; a locker EuroParcel no longer serves is forgotten and the customer picks a new one, instead of placing an order with a locker EuroParcel cannot find
+- The check runs once per checkout; if EuroParcel cannot be reached, the saved locker is kept
+
+---
 
 ### Version 1.0.4 (2025-12-23)
 

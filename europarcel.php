@@ -6,7 +6,7 @@
  * @copyright Copyright (c) 2025 EuroParcel
  * @license   http://opensource.org/licenses/afl-3.0.php  Academic Free License (AFL 3.0)
  *
- * @version   1.0.4
+ * @version   1.0.5
  */
 if (!defined('_PS_VERSION_')) {
     exit;
@@ -14,6 +14,11 @@ if (!defined('_PS_VERSION_')) {
 
 class EuroParcel extends Module
 {
+    /**
+     * EuroParcel endpoint that answers whether a locker is still in service.
+     */
+    const FIXED_LOCATION_URL = 'https://api.europarcel.com/api/public/locations/fixedlocations/';
+
     private $carrier_name = 'EuroParcel - Home Delivery';
     private $carrier_locker_name = 'EuroParcel Locker Delivery';
     private $carrier_delay = 'Delivery in 24-48 hours';
@@ -99,7 +104,7 @@ class EuroParcel extends Module
     {
         $this->name = 'europarcel';
         $this->tab = 'shipping_logistics';
-        $this->version = '1.0.4';
+        $this->version = '1.0.5';
         $this->author = 'EuroParcel';
         $this->need_instance = 0;
         $this->ps_versions_compliancy = ['min' => '1.7', 'max' => _PS_VERSION_];
@@ -556,15 +561,7 @@ class EuroParcel extends Module
                 $courierIds = ''; // Default
             }
 
-            $europarcel_locker_data = $this->getSelectedLockerFromSession();
-            if (!$europarcel_locker_data && $this->context->customer->id) {
-                $customerLocker = $this->getCustomerLocker($this->context->customer->id);
-                if ($customerLocker) {
-                    $europarcel_locker_data = $customerLocker;
-                    $this->context->cookie->__set('europarcel_locker_data', json_encode($customerLocker));
-                    $this->context->cookie->write();
-                }
-            }
+            $europarcel_locker_data = $this->getUsableLocker();
             $this->context->smarty->assign([
                 'selected_locker' => $europarcel_locker_data,
                 'europarcel_locker_data' => $europarcel_locker_data ? json_encode($europarcel_locker_data) : '',
@@ -596,7 +593,7 @@ class EuroParcel extends Module
         $lockerCarrierId = (int) Configuration::get('EUROPARCEL_LOCKER_CARRIER_ID');
 
         if ($lockerCarrierId == $selectedCarrierId) {
-            $selectedCarrierData = $this->getSelectedLockerFromSession();
+            $selectedCarrierData = $this->getUsableLocker();
 
             if (!$selectedCarrierData) {
                 // This will BLOCK progress to the next step
@@ -775,6 +772,69 @@ class EuroParcel extends Module
     private function clearLockerFromSession()
     {
         unset($this->context->cookie->europarcel_locker_data);
+    }
+
+    /**
+     * Get the locker to use for this checkout: the one picked in this session, else the customer's saved one.
+     * The saved locker is checked with EuroParcel before checkout reuses it: a locker EuroParcel no longer
+     * serves is forgotten, so the customer picks a new one instead of placing an order that cannot be shipped.
+     * Once checked, the locker sits in the session, so the check runs once per checkout.
+     *
+     * @return array|null Locker data, or null when the customer has to pick a locker
+     */
+    private function getUsableLocker()
+    {
+        $locker = $this->getSelectedLockerFromSession();
+        $id_customer = (int) $this->context->customer->id;
+        if ($locker || !$id_customer) {
+            return $locker;
+        }
+
+        $locker = $this->getCustomerLocker($id_customer);
+        if (!$locker) {
+            return null;
+        }
+
+        if (isset($locker['id']) && $this->lockerIsGone($locker['id'])) {
+            Db::getInstance()->update(
+                'customer',
+                ['europarcel_locker_data' => null],
+                'id_customer = ' . $id_customer,
+                0,
+                true
+            );
+
+            return null;
+        }
+
+        $this->context->cookie->__set('europarcel_locker_data', json_encode($locker));
+        $this->context->cookie->write();
+
+        return $locker;
+    }
+
+    /**
+     * Ask EuroParcel whether a locker is gone.
+     *
+     * @param int $lockerId
+     *
+     * @return bool True only when EuroParcel says so; when EuroParcel cannot be asked, the locker is kept
+     */
+    private function lockerIsGone($lockerId)
+    {
+        $curl = curl_init(self::FIXED_LOCATION_URL . (int) $lockerId);
+        curl_setopt_array($curl, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_CONNECTTIMEOUT => 2,
+            CURLOPT_TIMEOUT => 3,
+            CURLOPT_HTTPHEADER => ['Accept: application/json'],
+            CURLOPT_USERAGENT => 'EuroParcel-PrestaShop/' . $this->version,
+        ]);
+        curl_exec($curl);
+        $status = (int) curl_getinfo($curl, CURLINFO_HTTP_CODE);
+
+        // 404: unknown or out-of-service locker; 400: an id no locker can have
+        return $status === 404 || $status === 400;
     }
 
     public function getAvailableLockersForSelection()

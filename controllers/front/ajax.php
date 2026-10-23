@@ -1,8 +1,9 @@
 <?php
+
 /**
  * EuroParcel AJAX Controller
  *
- * Handles AJAX requests for locker selection and session management
+ * Stores the locker the customer picked on the EuroParcel map for the current checkout.
  *
  * @author    EuroParcel
  * @copyright Copyright (c) 2025 EuroParcel
@@ -14,45 +15,46 @@ if (!defined('_PS_VERSION_')) {
 
 class EuroparcelAjaxModuleFrontController extends ModuleFrontController
 {
-    public function initContent()
-    {
-        $action = Tools::getValue('action');
+    /** @var EuroParcel */
+    public $module;
 
-        switch ($action) {
-            case 'save_locker_session':
-                $this->saveLockerSession();
-                break;
-            default:
-                exit(json_encode(['success' => false, 'error' => 'Invalid action']));
+    /**
+     * Answer with JSON instead of rendering a page.
+     */
+    public function initContent(): void
+    {
+        if (Tools::getValue('action') !== 'save_locker_session') {
+            $this->respond(['success' => false, 'error' => 'Invalid action'], 400);
         }
+
+        if (!isset($_SERVER['REQUEST_METHOD']) || $_SERVER['REQUEST_METHOD'] !== 'POST') {
+            $this->respond(['success' => false, 'error' => 'POST required'], 405);
+        }
+
+        $token = (string) Tools::getValue('token');
+
+        if ($token === '' || !hash_equals(Tools::getToken(false), $token)) {
+            $this->respond(['success' => false, 'error' => 'Invalid token'], 403);
+        }
+
+        if (!$this->module->saveSelectedLocker(json_decode((string) Tools::getValue('locker_data'), true))) {
+            $this->respond(['success' => false, 'error' => 'Invalid locker data'], 400);
+        }
+
+        $this->respond(['success' => true]);
     }
 
-    protected function saveLockerSession()
+    /**
+     * @param array<string, mixed> $response
+     * @param int $httpCode
+     *
+     * @return never
+     */
+    private function respond(array $response, $httpCode = 200)
     {
-        // Verify token for security
-        $token = Tools::getValue('token');
-        $expectedToken = Tools::getToken(false);
+        http_response_code($httpCode);
+        header('Content-Type: application/json; charset=utf-8');
 
-        if (!$token || !$expectedToken || $token !== $expectedToken) {
-            exit(json_encode(['success' => false, 'error' => 'Invalid token']));
-        }
-
-        $lockerData = Tools::getValue('locker_data');
-
-        if ($lockerData) {
-            // Validate that it is valid JSON
-            $decoded = json_decode($lockerData, true);
-            if (json_last_error() !== JSON_ERROR_NONE) {
-                exit(json_encode(['success' => false, 'error' => 'Invalid JSON data']));
-            }
-
-            // Save in PrestaShop session
-            $this->context->cookie->__set('europarcel_locker_data', $lockerData);
-            $this->context->cookie->write();
-
-            exit(json_encode(['success' => true]));
-        }
-
-        exit(json_encode(['success' => false, 'error' => 'Invalid data']));
+        exit(json_encode($response));
     }
 }

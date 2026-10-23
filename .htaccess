@@ -1,33 +1,20 @@
 # PrestaShop Module Security
-Order deny,allow
-Deny from all
+# Only scripts, styles, images and PHP entry points can be requested; templates, README, LICENSE
+# and config.xml cannot. Each block below is written for Apache 2.4 and for Apache 2.2.
 
-# Allow the main module file
-<Files "europarcel.php">
-    Allow from all
-</Files>
+# Apache 2.4
+<IfModule mod_authz_core.c>
+    Require all denied
+    <FilesMatch "\.(php|js|css|png|webp)$">
+        Require all granted
+    </FilesMatch>
+</IfModule>
 
-# Allow all PHP files in controllers directory (needed for AJAX, frontend, etc.)
-<FilesMatch "\.php$">
-    Allow from all
-</FilesMatch>
-
-# Allow all webp files
-<FilesMatch "\.webp$">
-    Allow from all
-</FilesMatch>
-
-# Allow all js files
-<FilesMatch "\.js$">
-    Allow from all
-</FilesMatch>
-
-# Allow PNG images (for logo.png)
-<FilesMatch "\.png$">
-    Allow from all
-</FilesMatch>
-
-# Allow CSS files
-<FilesMatch "\.css$">
-    Allow from all
-</FilesMatch>
+# Apache 2.2
+<IfModule !mod_authz_core.c>
+    Order deny,allow
+    Deny from all
+    <FilesMatch "\.(php|js|css|png|webp)$">
+        Allow from all
+    </FilesMatch>
+</IfModule>

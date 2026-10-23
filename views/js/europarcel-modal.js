@@ -1,169 +1,136 @@
 /**
  * EuroParcel Modal functionality
  *
- * Handles the display and interaction of the locker selection modal iframe.
+ * Shows the EuroParcel locker map in a modal dialog.
  *
  * @author    EuroParcel
  * @copyright Copyright (c) 2025 EuroParcel
  * @license   http://opensource.org/licenses/afl-3.0.php  Academic Free License (AFL 3.0)
  */
+(function () {
+  'use strict';
 
-(function ($) {
-	'use strict';
+  const MODAL_ID = 'europarcel-iframe-modal';
+  const MOBILE_MAX_WIDTH = 768;
 
-	/**
-	 * EuroParcel Modal object
-	 *
-	 * @since 1.0.2
-	 */
-	window.EuroparcelModal = {
-		/**
-		 * Show the locker selection modal
-		 *
-		 * Creates and displays a modal dialog containing an iframe with the locker map.
-		 * Handles both desktop and mobile responsive display.
-		 *
-		 * @since 1.0.2
-		 * @param {string} iframeUrl - The URL to load in the iframe
-		 */
-		show: function (iframeUrl) {
-			var isMobile = window.innerWidth <= 768;
+  // What the modal changes on the page while it is open, restored when it closes.
+  let saved = null;
 
-			var modalHtml = `
-				<div id="europarcel-iframe-modal" style="
-					position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-					background: rgba(0, 0, 0, 0.5); z-index: 2147483647; display: flex;
-					align-items: ${isMobile ? 'flex-start' : 'center'}; justify-content: center;
-					padding: ${isMobile ? '0' : '20px'};
-				">
-					<div style="
-						background: white; width: 100%; max-width: ${isMobile ? '100%' : '1200px'};
-						height: ${isMobile ? '100%' : '90%'}; border-radius: ${isMobile ? '0' : '8px'};
-						overflow: hidden; position: relative; ${isMobile ? 'margin: 0;' : ''}
-					">
-						<button id="close-locker-modal" style="
-							position: absolute; top: ${isMobile ? '15px' : '10px'}; right: ${isMobile ? '15px' : '10px'};
-							z-index: 10; background: rgba(0, 0, 0, 0.7); color: white; border: none;
-							border-radius: 50%; width: ${isMobile ? '35px' : '30px'}; height: ${isMobile ? '35px' : '30px'};
-							cursor: pointer; font-size: ${isMobile ? '20px' : '18px'}; line-height: 1;
-							box-shadow: 0 2px 8px rgba(0,0,0,0.3); transition: all 0.2s ease;
-						"
-						onmouseover="this.style.background='rgba(0,0,0,0.9)'; this.style.transform='scale(1.1)';"
-						onmouseout="this.style.background='rgba(0,0,0,0.7)'; this.style.transform='scale(1)';"
-						>&times;</button>
-						<iframe src="${iframeUrl}" style="width: 100%; height: 100%; border: none;"
-							title="Alege locker" id="europarcel-locker-iframe"></iframe>
-					</div>
-				</div>
-			`;
+  function closeOnEscape(event) {
+    if (event.key === 'Escape' || event.key === 'Esc') {
+      window.EuroparcelModal.close();
+    }
+  }
 
-			document.body.insertAdjacentHTML('beforeend', modalHtml);
+  window.EuroparcelModal = {
+    /**
+     * Show the locker map. Does nothing while the map is already open.
+     *
+     * @param {string} iframeUrl URL of the map
+     * @param {{title: string, close: string}} [labels] Translated title of the map and label of its close button
+     */
+    show(iframeUrl, labels) {
+      if (document.getElementById(MODAL_ID)) {
+        return;
+      }
 
-			// Store original styles to restore later
-			var originalBodyOverflow = document.body.style.overflow;
-			var originalBodyHeight = document.body.style.height;
-			var originalHtmlOverflow = document.documentElement.style.overflow;
+      const title = (labels && labels.title) || '';
+      const closeLabel = (labels && labels.close) || '';
+      const isMobile = window.innerWidth <= MOBILE_MAX_WIDTH;
+      const body = document.body;
+      const html = document.documentElement;
 
-			// Prevent scrolling
-			document.body.style.overflow = 'hidden';
-			document.documentElement.style.overflow = 'hidden';
+      const modal = document.createElement('div');
+      modal.id = MODAL_ID;
+      modal.className = isMobile ? 'europarcel-modal europarcel-modal--mobile' : 'europarcel-modal';
+      modal.setAttribute('role', 'dialog');
+      modal.setAttribute('aria-modal', 'true');
+      modal.setAttribute('aria-label', title);
 
-			if (isMobile) {
-				document.body.style.height = '100%';
-				document.body.style.position = 'fixed';
-				document.body.style.width = '100%';
-			}
+      const dialog = document.createElement('div');
+      dialog.className = 'europarcel-modal__dialog';
 
-			// Store original styles in modal dataset
-			var modal = document.getElementById('europarcel-iframe-modal');
-			modal.dataset.originalBodyOverflow = originalBodyOverflow;
-			modal.dataset.originalBodyHeight = originalBodyHeight;
-			modal.dataset.originalHtmlOverflow = originalHtmlOverflow;
+      const closeButton = document.createElement('button');
+      closeButton.type = 'button';
+      closeButton.className = 'europarcel-modal__close';
+      closeButton.setAttribute('aria-label', closeLabel);
+      closeButton.textContent = '\u00d7';
+      closeButton.addEventListener('click', () => window.EuroparcelModal.close());
 
-			// Setup event handlers
-			this.setupEventHandlers(modal, isMobile);
-		},
+      const iframe = document.createElement('iframe');
+      iframe.id = 'europarcel-locker-iframe';
+      iframe.className = 'europarcel-modal__frame';
+      iframe.title = title;
+      iframe.src = iframeUrl;
 
-		/**
-		 * Setup modal event handlers
-		 *
-		 * Configures click handlers, escape key handler, and other modal interactions.
-		 *
-		 * @since 1.0.2
-		 * @param {HTMLElement} modal - The modal element
-		 * @param {boolean} isMobile - Whether the device is mobile
-		 */
-		setupEventHandlers: function (modal, isMobile) {
-			// Close button handler
-			var closeButton = document.getElementById('close-locker-modal');
-			if (closeButton) {
-				closeButton.onclick = function (e) {
-					e.preventDefault();
-					e.stopPropagation();
-					EuroparcelModal.close();
-				};
-			}
+      dialog.append(closeButton, iframe);
+      modal.appendChild(dialog);
 
-			// Click outside to close (desktop only)
-			if (!isMobile) {
-				modal.onclick = function (e) {
-					if (e.target === this) {
-						EuroparcelModal.close();
-					}
-				};
-			}
+      // On desktop, a click on the backdrop closes the map.
+      if (!isMobile) {
+        modal.addEventListener('click', (event) => {
+          if (event.target === modal) {
+            window.EuroparcelModal.close();
+          }
+        });
+      }
 
-			// Prevent clicks inside modal from closing it
-			var modalContent = modal.querySelector('div');
-			if (modalContent) {
-				modalContent.onclick = function (e) {
-					e.stopPropagation();
-				};
-			}
+      saved = {
+        focus: document.activeElement,
+        scrollY: window.pageYOffset,
+        htmlOverflow: html.style.overflow,
+        bodyStyle: {
+          overflow: body.style.overflow,
+          height: body.style.height,
+          position: body.style.position,
+          width: body.style.width,
+          top: body.style.top,
+        },
+      };
 
-			// Escape key handler
-			var escapeHandler = function (e) {
-				if (e.key === 'Escape' || e.keyCode === 27) {
-					EuroparcelModal.close();
-				}
-			};
+      // Stop the page from scrolling behind the map.
+      html.style.overflow = 'hidden';
+      body.style.overflow = 'hidden';
 
-			document.addEventListener('keydown', escapeHandler);
-			modal.escapeHandler = escapeHandler;
-		},
+      if (isMobile) {
+        // Mobile browsers need a fixed body; "top" keeps the page where the customer left it.
+        body.style.height = '100%';
+        body.style.position = 'fixed';
+        body.style.width = '100%';
+        body.style.top = -saved.scrollY + 'px';
+      }
 
-		/**
-		 * Close the modal
-		 *
-		 * Removes the modal from DOM and restores original page styles.
-		 * Cleans up event listeners to prevent memory leaks.
-		 *
-		 * @since 1.0.2
-		 */
-		close: function () {
-			var modal = document.getElementById('europarcel-iframe-modal');
-			if (!modal) {
-				return;
-			}
+      body.appendChild(modal);
+      document.addEventListener('keydown', closeOnEscape);
+      closeButton.focus();
+    },
 
-			// Remove escape key event listener
-			if (modal.escapeHandler) {
-				document.removeEventListener('keydown', modal.escapeHandler);
-			}
+    /**
+     * Close the locker map and restore the page.
+     */
+    close() {
+      const modal = document.getElementById(MODAL_ID);
 
-			// Restore original styles
-			var originalBodyOverflow = modal.dataset.originalBodyOverflow || '';
-			var originalBodyHeight = modal.dataset.originalBodyHeight || '';
-			var originalHtmlOverflow = modal.dataset.originalHtmlOverflow || '';
+      if (!modal) {
+        return;
+      }
 
-			document.body.style.overflow = originalBodyOverflow;
-			document.body.style.height = originalBodyHeight;
-			document.body.style.position = '';
-			document.body.style.width = '';
-			document.documentElement.style.overflow = originalHtmlOverflow;
+      document.removeEventListener('keydown', closeOnEscape);
+      modal.remove();
 
-			// Remove modal from DOM
-			modal.remove();
-		},
-	};
-})(jQuery);
+      if (!saved) {
+        return;
+      }
+
+      document.documentElement.style.overflow = saved.htmlOverflow;
+      Object.assign(document.body.style, saved.bodyStyle);
+      window.scrollTo(0, saved.scrollY);
+
+      if (saved.focus && document.body.contains(saved.focus)) {
+        saved.focus.focus({ preventScroll: true });
+      }
+
+      saved = null;
+    },
+  };
+})();

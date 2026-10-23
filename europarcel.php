@@ -1,4 +1,5 @@
 <?php
+
 /**
  * EuroParcel - PrestaShop Shipping Module
  *
@@ -6,108 +7,102 @@
  * @copyright Copyright (c) 2025 EuroParcel
  * @license   http://opensource.org/licenses/afl-3.0.php  Academic Free License (AFL 3.0)
  *
- * @version   1.0.5
+ * @version   2.0.0
  */
 if (!defined('_PS_VERSION_')) {
     exit;
 }
 
+/**
+ * @phpstan-type Locker array{id: int, carrier_id: int, name: string, address: string, carrier_name: string}
+ * @phpstan-type Service array{carrier_id: int, service_id: int, logo: string}
+ */
 class EuroParcel extends Module
 {
     /**
+     * EuroParcel service ids. They are stored on orders and read by EuroParcel through the webservice.
+     */
+    public const SERVICE_HOME = 1;
+    public const SERVICE_LOCKER = 2;
+
+    private const CONFIG_HOME_CARRIER_ID = 'EUROPARCEL_CARRIER_ID';
+    private const CONFIG_LOCKER_CARRIER_ID = 'EUROPARCEL_LOCKER_CARRIER_ID';
+    private const CONFIG_LOCKER_TYPES = 'EUROPARCEL_LOCKER_TYPES';
+    private const CONFIG_DEFAULT_CARRIER = 'EUROPARCEL_DEFAULT_CARRIER';
+
+    /**
+     * Cookie key of the locker picked for the current checkout.
+     */
+    private const COOKIE_LOCKER = 'europarcel_locker_data';
+
+    /**
      * EuroParcel endpoint that answers whether a locker is still in service.
      */
-    const FIXED_LOCATION_URL = 'https://api.europarcel.com/api/public/locations/fixedlocations/';
+    private const FIXED_LOCATION_URL = 'https://api.europarcel.com/api/public/locations/fixedlocations/';
 
-    private $carrier_name = 'EuroParcel - Home Delivery';
-    private $carrier_locker_name = 'EuroParcel Locker Delivery';
-    private $carrier_delay = 'Delivery in 24-48 hours';
-    private $carrier_locker_delay = 'Next day delivery';
-    private $available_lockers = [
-        'easybox' => 'Sameday EasyBox - Delivery to locker',
-        'fanbox' => 'Fan Courier FANbox - Delivery to locker',
-        'dpdbox' => 'DPD Box - Delivery to locker',
-        'carguslocker' => 'Cargus - Delivery to locker',
+    private const TRACKING_URL = 'https://www.eawb.ro/tracking?awb=@';
+
+    private const HOOKS = [
+        'displayHeader',
+        'displayCarrierExtraContent',
+        'actionValidateStepComplete',
+        'actionValidateOrder',
+        'displayOrderConfirmation',
+        'displayAdminOrderMain',
+        'actionCarrierUpdate',
     ];
-    private $available_carriers = [
-        'cargus_national' => 'Cargus - Delivery to address',
-        'dpd_standard' => 'DPD - Delivery to address',
-        'fan_courier' => 'Fan Courier - Delivery to address',
-        'gls_national' => 'GLS - Delivery to address',
-        'sameday' => 'SameDay - Delivery to address',
-        'bookurier' => 'Bookurier - Delivery to address',
-    ];
-    private $carrier_settings = [
-        'cargus_national' => [
-            'carrier' => 'cargus_national',
-            'carrier_id' => 1,
-            'service_id' => 1,
-            'logo' => 'cargus.webp',
+
+    /**
+     * The two PrestaShop carriers the module creates, keyed by the configuration key that stores their id.
+     */
+    private const CARRIERS = [
+        self::CONFIG_HOME_CARRIER_ID => [
+            'name' => 'EuroParcel - Home Delivery',
+            'delay' => 'Delivery in 24-48 hours',
+            'grade' => 0,
+            'max_width' => 0,
+            'max_height' => 0,
+            'max_depth' => 0,
+            'max_weight' => 50,
         ],
-        'dpd_standard' => [
-            'carrier' => 'dpd_standard',
-            'carrier_id' => 2,
-            'service_id' => 1,
-            'logo' => 'dpd.webp',
-        ],
-        'fan_courier' => [
-            'carrier' => 'fan_courier',
-            'carrier_id' => 3,
-            'service_id' => 1,
-            'logo' => 'fan-courier.webp',
-        ],
-        'gls_national' => [
-            'carrier' => 'gls_national',
-            'carrier_id' => 4,
-            'service_id' => 1,
-            'logo' => 'gls.webp',
-        ],
-        'sameday' => [
-            'carrier' => 'sameday',
-            'carrier_id' => 6,
-            'service_id' => 1,
-            'logo' => 'sameday.webp',
-        ],
-        'bookurier' => [
-            'carrier' => 'bookurier',
-            'carrier_id' => 5,
-            'service_id' => 1,
-            'logo' => 'bookurier.webp',
-        ],
-        'easybox' => [
-            'carrier' => 'easybox',
-            'carrier_id' => 6,
-            'service_id' => 2,
-            'logo' => 'easybox.webp',
-        ],
-        'fanbox' => [
-            'carrier' => 'fanbox',
-            'carrier_id' => 3,
-            'service_id' => 2,
-            'logo' => 'fanbox.webp',
-        ],
-        'dpdbox' => [
-            'carrier' => 'dpdbox',
-            'carrier_id' => 2,
-            'service_id' => 2,
-            'logo' => 'dpd.webp',
-        ],
-        'carguslocker' => [
-            'carrier' => 'carguslocker',
-            'carrier_id' => 1,
-            'service_id' => 2,
-            'logo' => 'cargus.webp',
+        self::CONFIG_LOCKER_CARRIER_ID => [
+            'name' => 'EuroParcel Locker Delivery',
+            'delay' => 'Next day delivery',
+            'grade' => 9,
+            'max_width' => 60,
+            'max_height' => 60,
+            'max_depth' => 60,
+            'max_weight' => 20,
         ],
     ];
+
+    /**
+     * EuroParcel services the merchant can offer, with their EuroParcel courier id (carrier_id), service
+     * and logo. Their labels are in getServiceLabels(), so they can be translated.
+     */
+    private const SERVICES = [
+        'cargus_national' => ['carrier_id' => 1, 'service_id' => self::SERVICE_HOME, 'logo' => 'cargus.webp'],
+        'dpd_standard' => ['carrier_id' => 2, 'service_id' => self::SERVICE_HOME, 'logo' => 'dpd.webp'],
+        'fan_courier' => ['carrier_id' => 3, 'service_id' => self::SERVICE_HOME, 'logo' => 'fan-courier.webp'],
+        'gls_national' => ['carrier_id' => 4, 'service_id' => self::SERVICE_HOME, 'logo' => 'gls.webp'],
+        'sameday' => ['carrier_id' => 6, 'service_id' => self::SERVICE_HOME, 'logo' => 'sameday.webp'],
+        'bookurier' => ['carrier_id' => 5, 'service_id' => self::SERVICE_HOME, 'logo' => 'bookurier.webp'],
+        'easybox' => ['carrier_id' => 6, 'service_id' => self::SERVICE_LOCKER, 'logo' => 'easybox.webp'],
+        'fanbox' => ['carrier_id' => 3, 'service_id' => self::SERVICE_LOCKER, 'logo' => 'fanbox.webp'],
+        'dpdbox' => ['carrier_id' => 2, 'service_id' => self::SERVICE_LOCKER, 'logo' => 'dpd.webp'],
+        'carguslocker' => ['carrier_id' => 1, 'service_id' => self::SERVICE_LOCKER, 'logo' => 'cargus.webp'],
+    ];
+
+    private const DEFAULT_HOME_SERVICE = 'cargus_national';
 
     public function __construct()
     {
         $this->name = 'europarcel';
         $this->tab = 'shipping_logistics';
-        $this->version = '1.0.5';
+        $this->version = '2.0.0';
         $this->author = 'EuroParcel';
         $this->need_instance = 0;
-        $this->ps_versions_compliancy = ['min' => '1.7', 'max' => _PS_VERSION_];
+        $this->ps_versions_compliancy = ['min' => '1.7', 'max' => '9.99.99'];
         $this->bootstrap = true;
 
         parent::__construct();
@@ -116,662 +111,690 @@ class EuroParcel extends Module
         $this->description = $this->l('Create and manage the EuroParcel carrier for home delivery and locker pickup');
         $this->confirmUninstall = $this->l('Are you sure you want to uninstall?');
 
-        if (!Configuration::get('EUROPARCEL_CARRIER_ID')) {
+        if ($this->id && !Configuration::get(self::CONFIG_HOME_CARRIER_ID)) {
             $this->warning = $this->l('No carrier ID found. Please reinstall the module.');
         }
     }
 
+    /**
+     * @return bool
+     */
     public function install()
     {
-        // Add the europarcel_locker_id field to the orders table
-        if (!$this->addLockerIdField()) {
-            return false;
-        }
-        if (!$this->addCarrierIdField()) {
-            return false;
-        }
-        if (!$this->addServiceIdField()) {
-            return false;
-        }
-        if (!$this->addCustomerLockerField()) {
-            return false;
-        }
-
-        return parent::install() && $this->createEuroParcelCarrier() && $this->createEuroParcelCarrierLocker() && $this->registerHook('displayHeader') && $this->registerHook('displayCarrierExtraContent') && $this->registerHook('actionValidateOrder') && $this->registerHook('displayAdminOrderMain') && $this->registerHook('actionValidateStepComplete') && $this->registerHook('displayOrderConfirmation') && $this->registerHook('actionCarrierUpdate') && Configuration::updateValue('EUROPARCEL_LOCKER_TYPES', '') && Configuration::updateValue('EUROPARCEL_DEFAULT_CARRIER', 'cargus_national');
+        // The columns are kept on uninstall, so they are added first and only when missing.
+        return $this->installDatabase()
+            && parent::install()
+            && $this->installCarriers()
+            && $this->registerHook(self::HOOKS)
+            && Configuration::updateValue(self::CONFIG_LOCKER_TYPES, '')
+            && Configuration::updateValue(self::CONFIG_DEFAULT_CARRIER, self::DEFAULT_HOME_SERVICE);
     }
 
+    /**
+     * @return bool
+     */
     public function uninstall()
     {
-        $this->deleteEuroParcelCarrier();
-        $this->deleteEuroParcelCarrierLocker();
-
-        return Configuration::deleteByName('EUROPARCEL_CARRIER_ID') && Configuration::deleteByName('EUROPARCEL_LOCKER_CARRIER_ID') && Configuration::deleteByName('EUROPARCEL_LOCKER_TYPES') && Configuration::deleteByName('EUROPARCEL_DEFAULT_CARRIER') && parent::uninstall();
-    }
-
-    private function addLockerIdField()
-    {
-        // Check if the field already exists
-        $columns = Db::getInstance()->executeS('SHOW COLUMNS FROM `' . _DB_PREFIX_ . 'orders`');
-        $columnExists = false;
-
-        if ($columns) {
-            foreach ($columns as $column) {
-                if ($column['Field'] === 'europarcel_locker_id') {
-                    $columnExists = true;
-
-                    break;
-                }
-            }
-        }
-
-        if (!$columnExists) {
-            // Add the europarcel_locker_id field to the orders table
-            $sql = 'ALTER TABLE `' . _DB_PREFIX_ . 'orders`
-                    ADD `europarcel_locker_id` INT UNSIGNED NULL DEFAULT NULL AFTER `id_carrier`';
-
-            if (!Db::getInstance()->execute($sql)) {
-                $this->_errors[] = $this->l('Error adding europarcel_locker_id field to orders table');
-
-                return false;
-            }
-        }
-
-        return true;
-    }
-
-    private function addCarrierIdField()
-    {
-        // Check if the field already exists
-        $columns = Db::getInstance()->executeS('SHOW COLUMNS FROM `' . _DB_PREFIX_ . 'orders`');
-        $columnExists = false;
-
-        if ($columns) {
-            foreach ($columns as $column) {
-                if ($column['Field'] === 'europarcel_carrier_id') {
-                    $columnExists = true;
-
-                    break;
-                }
-            }
-        }
-
-        if (!$columnExists) {
-            // Add the europarcel_carrier_id field to the orders table
-            $sql = 'ALTER TABLE `' . _DB_PREFIX_ . 'orders`
-                    ADD `europarcel_carrier_id` INT UNSIGNED NULL DEFAULT NULL AFTER `id_carrier`';
-
-            if (!Db::getInstance()->execute($sql)) {
-                $this->_errors[] = $this->l('Error adding europarcel_carrier_id field to orders table');
-
-                return false;
-            }
-        }
-
-        return true;
-    }
-
-    private function addCustomerLockerField()
-    {
-        // Check if the field already exists
-        $columns = Db::getInstance()->executeS('SHOW COLUMNS FROM `' . _DB_PREFIX_ . 'customer`');
-        $columnExists = false;
-
-        if ($columns) {
-            foreach ($columns as $column) {
-                if ($column['Field'] === 'europarcel_locker_data') {
-                    $columnExists = true;
-
-                    break;
-                }
-            }
-        }
-
-        if (!$columnExists) {
-            // Add the europarcel_locker_data field to the customer table
-            $sql = 'ALTER TABLE `' . _DB_PREFIX_ . 'customer`
-                    ADD `europarcel_locker_data` TEXT NULL DEFAULT NULL';
-
-            if (!Db::getInstance()->execute($sql)) {
-                $this->_errors[] = $this->l('Error adding europarcel_locker_data field to customer table');
-
-                return false;
-            }
-        }
-
-        return true;
-    }
-
-    private function addServiceIdField()
-    {
-        // Check if the field already exists
-        $columns = Db::getInstance()->executeS('SHOW COLUMNS FROM `' . _DB_PREFIX_ . 'orders`');
-        $columnExists = false;
-
-        if ($columns) {
-            foreach ($columns as $column) {
-                if ($column['Field'] === 'europarcel_service_id') {
-                    $columnExists = true;
-
-                    break;
-                }
-            }
-        }
-
-        if (!$columnExists) {
-            // Add the europarcel_service_id field to the orders table
-            $sql = 'ALTER TABLE `' . _DB_PREFIX_ . 'orders`
-                    ADD `europarcel_service_id` INT UNSIGNED NULL DEFAULT NULL AFTER `europarcel_carrier_id`';
-
-            if (!Db::getInstance()->execute($sql)) {
-                $this->_errors[] = $this->l('Error adding europarcel_service_id field to orders table');
-
-                return false;
-            }
-        }
-
-        return true;
-    }
-
-    private function createEuroParcelCarrier()
-    {
-        $carrier = new Carrier();
-        $carrier->name = $this->carrier_name;
-        $carrier->active = true;
-        $carrier->deleted = false;
-        $carrier->shipping_handling = false;
-        $carrier->range_behavior = false;
-
-        // Set the delay for all languages
-        $languages = Language::getLanguages(false);
-        $delay = [];
-        foreach ($languages as $language) {
-            $delay[$language['id_lang']] = $this->carrier_delay;
-        }
-        $carrier->delay = $delay;
-
-        $carrier->shipping_external = false;
-        $carrier->is_module = true;
-        $carrier->external_module_name = $this->name;
-        $carrier->need_range = true;
-        $carrier->max_width = 0;
-        $carrier->max_height = 0;
-        $carrier->max_depth = 0;
-        $carrier->max_weight = 50;
-        $carrier->grade = 0;
-        $carrier->url = 'https://www.eawb.ro/tracking?awb=@';
-
-        // Add the carrier
-        if (!$carrier->add()) {
-            $this->_errors[] = $this->l('Error creating EuroParcel carrier');
-
+        if (!parent::uninstall()) {
             return false;
         }
 
-        $carrier_id = (int) $carrier->id;
+        // The carriers are only flagged as deleted, because past orders still use them.
+        $this->deleteCarrier(self::CONFIG_HOME_CARRIER_ID);
+        $this->deleteCarrier(self::CONFIG_LOCKER_CARRIER_ID);
 
-        // Save the carrier ID
-        Configuration::updateValue('EUROPARCEL_CARRIER_ID', $carrier_id);
-
-        // Copy carrier logo
-        $this->copyCarrierLogo($carrier_id);
-
-        // Add to all groups
-        $groups = Group::getGroups(true);
-        foreach ($groups as $group) {
-            Db::getInstance()->insert('carrier_group', [
-                'id_carrier' => $carrier_id,
-                'id_group' => (int) $group['id_group'],
-            ]);
-        }
-
-        // Create price ranges
-        $rangePrice = new RangePrice();
-        $rangePrice->id_carrier = $carrier_id;
-        $rangePrice->delimiter1 = 0.0;
-        $rangePrice->delimiter2 = 10000.0;
-        if (!$rangePrice->add()) {
-            $this->_errors[] = $this->l('Error creating price range');
-
-            return false;
-        }
-
-        // Create weight ranges
-        $rangeWeight = new RangeWeight();
-        $rangeWeight->id_carrier = $carrier_id;
-        $rangeWeight->delimiter1 = 0.0;
-        $rangeWeight->delimiter2 = 10000.0;
-        if (!$rangeWeight->add()) {
-            $this->_errors[] = $this->l('Error creating weight range');
-
-            return false;
-        }
-
-        // Add to all zones
-        $zones = Zone::getZones(true);
-        foreach ($zones as $zone) {
-            Db::getInstance()->insert('carrier_zone', [
-                'id_carrier' => $carrier_id,
-                'id_zone' => (int) $zone['id_zone'],
-            ]);
-
-            // Add delivery price
-            Db::getInstance()->insert('delivery', [
-                'id_carrier' => $carrier_id,
-                'id_range_price' => (int) $rangePrice->id,
-                'id_range_weight' => (int) $rangeWeight->id,
-                'id_zone' => (int) $zone['id_zone'],
-                'price' => '0.00',
-            ]);
-        }
-
-        return true;
-    }
-
-    private function createEuroParcelCarrierLocker()
-    {
-        $carrier = new Carrier();
-        $carrier->name = $this->carrier_locker_name;
-        $carrier->active = true;
-        $carrier->deleted = false;
-        $carrier->shipping_handling = false;
-        $carrier->range_behavior = false;
-
-        // Set the delay for all languages
-        $languages = Language::getLanguages(false);
-        $delay = [];
-        foreach ($languages as $language) {
-            $delay[$language['id_lang']] = $this->carrier_locker_delay;
-        }
-        $carrier->delay = $delay;
-        $carrier->shipping_external = false;
-        $carrier->is_module = true;
-        $carrier->external_module_name = $this->name;
-        $carrier->need_range = true;
-        $carrier->max_width = 60;
-        $carrier->max_height = 60;
-        $carrier->max_depth = 60;
-        $carrier->max_weight = 20;
-        $carrier->grade = 9;
-        $carrier->url = 'https://www.eawb.ro/tracking?awb=@';
-
-        // Add the carrier
-        if (!$carrier->add()) {
-            $this->_errors[] = $this->l('Error creating EuroParcel Locker carrier');
-
-            return false;
-        }
-
-        $carrier_id = (int) $carrier->id;
-
-        // Save the carrier ID
-        Configuration::updateValue('EUROPARCEL_LOCKER_CARRIER_ID', $carrier_id);
-
-        // Copy carrier logo
-        $this->copyCarrierLogo($carrier_id);
-
-        // Add to all groups
-        $groups = Group::getGroups(true);
-        foreach ($groups as $group) {
-            Db::getInstance()->insert('carrier_group', [
-                'id_carrier' => $carrier_id,
-                'id_group' => (int) $group['id_group'],
-            ]);
-        }
-
-        // Create price ranges
-        $rangePrice = new RangePrice();
-        $rangePrice->id_carrier = $carrier_id;
-        $rangePrice->delimiter1 = 0.0;
-        $rangePrice->delimiter2 = 10000.0;
-        if (!$rangePrice->add()) {
-            $this->_errors[] = $this->l('Error creating price range for locker');
-
-            return false;
-        }
-
-        // Create weight ranges
-        $rangeWeight = new RangeWeight();
-        $rangeWeight->id_carrier = $carrier_id;
-        $rangeWeight->delimiter1 = 0.0;
-        $rangeWeight->delimiter2 = 10000.0;
-        if (!$rangeWeight->add()) {
-            $this->_errors[] = $this->l('Error creating weight range for locker');
-
-            return false;
-        }
-
-        // Add to all zones
-        $zones = Zone::getZones(true);
-        foreach ($zones as $zone) {
-            Db::getInstance()->insert('carrier_zone', [
-                'id_carrier' => $carrier_id,
-                'id_zone' => (int) $zone['id_zone'],
-            ]);
-
-            // Add delivery price
-            Db::getInstance()->insert('delivery', [
-                'id_carrier' => $carrier_id,
-                'id_range_price' => (int) $rangePrice->id,
-                'id_range_weight' => (int) $rangeWeight->id,
-                'id_zone' => (int) $zone['id_zone'],
-                'price' => '0.00',
-            ]);
+        foreach ([self::CONFIG_HOME_CARRIER_ID, self::CONFIG_LOCKER_CARRIER_ID, self::CONFIG_LOCKER_TYPES, self::CONFIG_DEFAULT_CARRIER] as $key) {
+            Configuration::deleteByName($key);
         }
 
         return true;
     }
 
     /**
-     * Copy carrier logo to PrestaShop's carrier images directory
-     *
-     * @param int $carrier_id The carrier ID
-     * @return bool Success status
+     * Load the locker picker. It is loaded on every page, not only on the order page, so it also works
+     * with one-page checkout modules that show the carriers on their own page.
      */
-    private function copyCarrierLogo($carrier_id)
+    public function hookDisplayHeader(): void
     {
-        $source_logo = dirname(__FILE__) . '/logo.png';
-        $destination_logo = _PS_SHIP_IMG_DIR_ . $carrier_id . '.jpg';
+        $controller = $this->context->controller;
+        $controller->registerStylesheet('europarcel-style', 'modules/' . $this->name . '/views/css/europarcel.css', ['media' => 'all', 'priority' => 150]);
+        $controller->registerJavascript('europarcel-modal', 'modules/' . $this->name . '/views/js/europarcel-modal.js', ['position' => 'bottom', 'priority' => 80]);
+        $controller->registerJavascript('europarcel-checkout', 'modules/' . $this->name . '/views/js/europarcel-checkout.js', ['position' => 'bottom', 'priority' => 90]);
 
-        // Check if source logo exists
-        if (!file_exists($source_logo)) {
-            return false;
-        }
-
-        // Copy the logo file
-        if (!copy($source_logo, $destination_logo)) {
-            return false;
-        }
-
-        // Set proper permissions
-        @chmod($destination_logo, 0644);
-
-        return true;
-    }
-
-    private function deleteEuroParcelCarrier()
-    {
-        $carrier_id = Configuration::get('EUROPARCEL_CARRIER_ID');
-        if ($carrier_id) {
-            $carrier = new Carrier((int) $carrier_id);
-            if (Validate::isLoadedObject($carrier)) {
-                $carrier->deleted = true;
-
-                return $carrier->update();
-            }
-        }
-
-        return true;
-    }
-
-    private function deleteEuroParcelCarrierLocker()
-    {
-        $carrier_id = Configuration::get('EUROPARCEL_LOCKER_CARRIER_ID');
-        if ($carrier_id) {
-            $carrier = new Carrier((int) $carrier_id);
-            if (Validate::isLoadedObject($carrier)) {
-                $carrier->deleted = true;
-
-                return $carrier->update();
-            }
-        }
-
-        return true;
-    }
-
-    public function hookDisplayHeader()
-    {
-        // Register JavaScripts
-        $this->context->controller->registerJavascript(
-            'europarcel-modal',
-            $this->_path . 'views/js/europarcel-modal.js',
-            ['position' => 'bottom', 'priority' => 80]
-        );
-
-        $this->context->controller->registerJavascript(
-            'europarcel-checkout',
-            $this->_path . 'views/js/europarcel-checkout.js',
-            ['position' => 'bottom', 'priority' => 90]
-        );
-        // Pass AJAX URL and token to JavaScript
         Media::addJsDef([
             'europarcel_ajax_url' => $this->context->link->getModuleLink($this->name, 'ajax', [], true),
             'europarcel_token' => Tools::getToken(false),
         ]);
     }
 
-    public function hookDisplayCarrierExtraContent($params)
+    /**
+     * Show the locker picker under the locker carrier in the checkout.
+     *
+     * @param array<string, mixed> $params
+     *
+     * @return string
+     */
+    public function hookDisplayCarrierExtraContent(array $params)
     {
-        $carrier = $params['carrier'];
-        $locker_carrier_id = (int) Configuration::get('EUROPARCEL_LOCKER_CARRIER_ID');
-
-        if ((int) $carrier['id'] === $locker_carrier_id) {
-            $address = new Address($this->context->cart->id_address_delivery);
-            $country = new Country($address->id_country);
-            $state = new State($address->id_state);
-            // Get courier IDs from configuration
-            $lockers_couriers = Configuration::get('EUROPARCEL_LOCKER_TYPES');
-            if ($lockers_couriers) {
-                $lockers_couriers_arr = explode(',', $lockers_couriers);
-                $courierIdsArr = [];
-                foreach ($lockers_couriers_arr as $locker_carier) {
-                    $courierIdsArr[] = $this->carrier_settings[$locker_carier]['carrier_id'];
-                }
-                $courierIds = implode(',', $courierIdsArr);
-            } else {
-                $courierIds = ''; // Default
-            }
-
-            $europarcel_locker_data = $this->getUsableLocker();
-            $this->context->smarty->assign([
-                'selected_locker' => $europarcel_locker_data,
-                'europarcel_locker_data' => $europarcel_locker_data ? json_encode($europarcel_locker_data) : '',
-                'checkout_data' => [
-                    'address' => $address->address1 . ($address->address2 ? ', ' . $address->address2 : ''),
-                    'city' => $address->city,
-                    'state' => $state->iso_code,
-                    'postcode' => $address->postcode,
-                    'country' => $country->name,
-                ],
-                'courier_ids' => $courierIds,
-                'module_dir' => $this->_path,
-            ]);
-
-            return $this->display(__FILE__, 'carrier_extra_content.tpl');
+        if (!isset($params['carrier']['id']) || !$this->isLockerCarrier($params['carrier']['id'])) {
+            return '';
         }
 
-        return '';
+        $address = new Address((int) $this->context->cart->id_address_delivery);
+        $state = new State((int) $address->id_state);
+
+        $this->smarty->assign([
+            'europarcel_locker' => $this->getUsableLocker(),
+            'europarcel_city' => (string) $address->city,
+            'europarcel_county' => (string) $state->iso_code,
+            'europarcel_courier_ids' => implode(',', $this->getLockerCourierIds()),
+        ]);
+
+        return $this->display(__FILE__, 'carrier_extra_content.tpl');
     }
 
-    public function hookActionValidateStepComplete($params)
+    /**
+     * Keep the customer on the delivery step until a locker is picked for the locker carrier.
+     *
+     * @param array<string, mixed> $params
+     */
+    public function hookActionValidateStepComplete(array $params): void
     {
-        // Check if we are in the shipping step (step 2)
-        if ($params['step_name'] !== 'delivery') {
-            return true; // Let the other steps continue
+        if (!isset($params['step_name']) || $params['step_name'] !== 'delivery'
+            || !$this->isLockerCarrier($this->context->cart->id_carrier)) {
+            return;
         }
 
-        $selectedCarrierId = (int) $this->context->cart->id_carrier;
-        $lockerCarrierId = (int) Configuration::get('EUROPARCEL_LOCKER_CARRIER_ID');
+        $locker = $this->getUsableLocker();
 
-        if ($lockerCarrierId == $selectedCarrierId) {
-            $selectedCarrierData = $this->getUsableLocker();
+        if (!$locker) {
+            // 'completed' is a reference to the checkout step's state.
+            $params['completed'] = false;
+            $this->context->controller->errors[] = $this->l('Please select a EuroParcel locker before proceeding.');
 
-            if (!$selectedCarrierData) {
-                // This will BLOCK progress to the next step
-                $params['completed'] = false;
-                $this->context->controller->errors[] = $this->l('Please select a EuroParcel locker before proceeding.');
-
-                return false; // Important: return false to block
-            }
+            return;
         }
 
-        return true; // Allow continuation
+        // Payment notifications (IPN, webhooks) can create the order without the customer's cookie,
+        // so the locker is also kept on the customer for hookActionValidateOrder().
+        $this->saveCustomerLocker($this->context->customer->id, $locker);
     }
 
-    public function hookActionValidateOrder($params)
+    /**
+     * Store the EuroParcel service, courier and locker on a new order.
+     *
+     * @param array<string, mixed> $params
+     */
+    public function hookActionValidateOrder(array $params): void
     {
+        if (!isset($params['order']) || !Validate::isLoadedObject($params['order'])) {
+            return;
+        }
+
         $order = $params['order'];
-        $locker_carrier_id = (int) Configuration::get('EUROPARCEL_LOCKER_CARRIER_ID');
-        $carrier_id = (int) Configuration::get('EUROPARCEL_CARRIER_ID');
-        $default_carrier = Configuration::get('EUROPARCEL_DEFAULT_CARRIER');
-        if ((int) $order->id_carrier === $locker_carrier_id) {
-            $selected_locker = $this->getSelectedLockerFromSession();
 
-            if ($selected_locker && isset($selected_locker['id'])) {
-                // Save the locker ID directly in orders
-                $this->saveLockerToOrder($order->id, $selected_locker['id'], $selected_locker['carrier_id']);
-                if ($this->context->customer->id) {
-                    $this->saveCustomerLocker($this->context->customer->id, $selected_locker);
-                }
-            } else {
-                $this->context->controller->errors[] = $this->l('Please select a EuroParcel locker before proceeding.');
+        if ($this->isLockerCarrier($order->id_carrier)) {
+            $locker = $this->getSelectedLockerFromSession();
 
-                return false; // Important: return false to block
+            if (!$locker) {
+                $locker = $this->getCustomerLocker($order->id_customer);
             }
-        } elseif ((int) $order->id_carrier === $carrier_id) {
-            $this->saveCarrierToOrder($order->id, $this->carrier_settings[$default_carrier]['carrier_id']);
+
+            if (!$locker) {
+                PrestaShopLogger::addLog(
+                    sprintf('EuroParcel: locker order %d was placed without a locker.', (int) $order->id),
+                    3,
+                    null,
+                    'Order',
+                    (int) $order->id,
+                    true
+                );
+
+                return;
+            }
+
+            $this->saveOrderService($order, self::SERVICE_LOCKER, $locker['carrier_id'], $locker['id']);
+            $this->saveCustomerLocker($order->id_customer, $locker);
+        } elseif ($this->isHomeCarrier($order->id_carrier)) {
+            $service = $this->getDefaultHomeService();
+            $this->saveOrderService($order, self::SERVICE_HOME, $service ? $service['carrier_id'] : null, null);
         }
     }
 
-    public function hookDisplayOrderConfirmation($params)
+    /**
+     * Show the picked locker on the order confirmation page, then end the checkout's locker selection.
+     *
+     * @param array<string, mixed> $params
+     *
+     * @return string
+     */
+    public function hookDisplayOrderConfirmation(array $params)
     {
-        $order = $params['order'];
-        $locker_carrier_id = (int) Configuration::get('EUROPARCEL_LOCKER_CARRIER_ID');
-
-        if ((int) $order->id_carrier === $locker_carrier_id) {
-            $europarcel_locker_data = $this->getSelectedLockerFromSession();
-
-            if ($europarcel_locker_data) {
-                $this->context->smarty->assign([
-                    'locker_info' => $europarcel_locker_data,
-                ]);
-                $this->clearLockerFromSession();
-
-                return $this->display(__FILE__, 'order_confirmation_locker.tpl');
-            }
-        }
+        $locker = $this->getSelectedLockerFromSession();
         $this->clearLockerFromSession();
 
-        return '';
-    }
-
-    public function hookActionCarrierUpdate($params)
-    {
-        // This hook is called when a carrier is updated in the backend
-        $id_carrier_old = (int) $params['id_carrier'];
-        $id_carrier_new = (int) $params['carrier']->id;
-
-        // Example: update the EuroParcel carrier ID in configuration
-        $currentEuroparcelCarrierId = Configuration::get('EUROPARCEL_CARRIER_ID');
-        $currentEuroparcelLockerCarrierId = Configuration::get('EUROPARCEL_LOCKER_CARRIER_ID');
-        if ($currentEuroparcelCarrierId == $id_carrier_old) {
-            // The EuroParcel carrier has been updated, save the new ID
-            Configuration::updateValue('EUROPARCEL_CARRIER_ID', $id_carrier_new);
-        }
-        if ($currentEuroparcelLockerCarrierId == $id_carrier_old) {
-            // The EuroParcel carrier has been updated, save the new ID
-            Configuration::updateValue('EUROPARCEL_LOCKER_CARRIER_ID', $id_carrier_new);
-        }
-    }
-
-    public function hookDisplayAdminOrderMain($params)
-    {
-        $id_order = (int) $params['id_order'];
-        $order = new Order($id_order);
-        $locker_carrier_id = (int) Configuration::get('EUROPARCEL_LOCKER_CARRIER_ID');
-        $home_carrier_id = (int) Configuration::get('EUROPARCEL_CARRIER_ID');
-        if ((int) $order->id_carrier === $locker_carrier_id || $order->id_carrier === $home_carrier_id) {
-            $carrier_service = $this->getCarrierServiceFromOrder($id_order);
-            $carrier_name = $this->GetCarrierName($carrier_service);
-            $europarcel_locker_id = $this->getLockerIdFromOrder($order->id);
-            $this->context->smarty->assign([
-                'carrier_name' => $carrier_name,
-                'europarcel_service' => $carrier_service['europarcel_service_id'] == 1 ? 'Delivery to home' : 'Delivery to locker',
-                'europarcel_locker_id' => $europarcel_locker_id,
-            ]);
-
-            return $this->display(__FILE__, 'displayAdminOrder.tpl');
+        if (!$locker || !isset($params['order']) || !$this->isLockerCarrier($params['order']->id_carrier)) {
+            return '';
         }
 
-        return '';
+        $this->smarty->assign(['europarcel_locker' => $locker]);
+
+        return $this->display(__FILE__, 'order_confirmation_locker.tpl');
     }
 
-    private function saveLockerToOrder($order_id, $europarcel_locker_id, $europarcel_carrier_id)
+    /**
+     * Keep the carrier ids up to date: PrestaShop saves an edited carrier under a new id.
+     *
+     * @param array<string, mixed> $params
+     */
+    public function hookActionCarrierUpdate(array $params): void
     {
-        // Save directly to the orders table
-        return Db::getInstance()->update(
-            'orders',
-            [
-                            'europarcel_locker_id' => (int) $europarcel_locker_id,
-                            'europarcel_service_id' => 2,
-                            'europarcel_carrier_id' => (int) $europarcel_carrier_id,
-                        ],
-            'id_order = ' . (int) $order_id
-        );
-    }
+        if (!isset($params['id_carrier'], $params['carrier']) || !Validate::isLoadedObject($params['carrier'])) {
+            return;
+        }
 
-    private function saveCarrierToOrder($order_id, $europarcel_carrier_id)
-    {
-        // Save directly to the orders table
-        return Db::getInstance()->update(
-            'orders',
-            [
-                            'europarcel_service_id' => 1,
-                            'europarcel_carrier_id' => (int) $europarcel_carrier_id,
-                        ],
-            'id_order = ' . (int) $order_id
-        );
-    }
-
-    private function getLockerIdFromOrder($order_id)
-    {
-        $sql = new DbQuery();
-        $sql->select('europarcel_locker_id')
-                ->from('orders')
-                ->where('id_order = ' . (int) $order_id);
-
-        return Db::getInstance()->getValue($sql);
-    }
-
-    private function getCarrierServiceFromOrder($order_id)
-    {
-        $sql = new DbQuery();
-        $sql->select('europarcel_carrier_id,europarcel_service_id')
-                ->from('orders')
-                ->where('id_order = ' . (int) $order_id);
-
-        return Db::getInstance()->getRow($sql);
-    }
-
-    private function GetCarrierName($carrier_service)
-    {
-        $current_carrier = '';
-        foreach ($this->carrier_settings as $key => $settings) {
-            if ($carrier_service['europarcel_carrier_id'] == $settings['carrier_id'] && $carrier_service['europarcel_service_id'] == $settings['service_id']) {
-                $current_carrier = $key;
-                break;
+        foreach ([self::CONFIG_HOME_CARRIER_ID, self::CONFIG_LOCKER_CARRIER_ID] as $key) {
+            if ((int) Configuration::get($key) === (int) $params['id_carrier']) {
+                Configuration::updateValue($key, (int) $params['carrier']->id);
             }
         }
-        if ($current_carrier) {
-            if ($carrier_service['europarcel_service_id'] == 1) {
-                return $this->available_carriers[$current_carrier];
-            } else {
-                return $this->available_lockers[$current_carrier];
+    }
+
+    /**
+     * Show the EuroParcel service of an order on the back office order page.
+     *
+     * @param array<string, mixed> $params
+     *
+     * @return string
+     */
+    public function hookDisplayAdminOrderMain(array $params)
+    {
+        $order = new Order(isset($params['id_order']) ? (int) $params['id_order'] : 0);
+
+        if (!Validate::isLoadedObject($order)) {
+            return '';
+        }
+
+        $isLockerOrder = $this->isLockerCarrier($order->id_carrier);
+
+        if (!$isLockerOrder && !$this->isHomeCarrier($order->id_carrier)) {
+            return '';
+        }
+
+        $data = $this->getOrderServiceData($order->id);
+        $serviceId = (int) $data['europarcel_service_id'];
+
+        if ($serviceId !== self::SERVICE_HOME && $serviceId !== self::SERVICE_LOCKER) {
+            $serviceId = $isLockerOrder ? self::SERVICE_LOCKER : self::SERVICE_HOME;
+        }
+
+        $this->smarty->assign([
+            'europarcel_courier' => $this->getServiceLabel($data['europarcel_carrier_id'], $serviceId),
+            'europarcel_is_locker_service' => $serviceId === self::SERVICE_LOCKER,
+            'europarcel_locker_id' => (int) $data['europarcel_locker_id'],
+        ]);
+
+        return $this->display(__FILE__, 'displayAdminOrder.tpl');
+    }
+
+    /**
+     * @return string
+     */
+    public function getContent()
+    {
+        $output = '';
+
+        if (Tools::isSubmit('save_europarcel_settings')) {
+            $output .= $this->saveSettings();
+        }
+
+        $this->context->controller->addCSS($this->_path . 'views/css/admin.css', 'all');
+
+        return $output . $this->renderSettingsForm();
+    }
+
+    /**
+     * Remember the locker the customer picked on the EuroParcel map for this checkout.
+     *
+     * @param mixed $data Locker data sent by the map
+     *
+     * @return bool False when the data does not describe a locker
+     */
+    public function saveSelectedLocker($data)
+    {
+        $locker = $this->normalizeLocker($data);
+
+        if (!$locker) {
+            return false;
+        }
+
+        $this->context->cookie->__set(self::COOKIE_LOCKER, $this->encodeLocker($locker));
+        $this->context->cookie->write();
+
+        return true;
+    }
+
+    /**
+     * Save the settings form.
+     *
+     * @return string Confirmation or error message
+     */
+    private function saveSettings()
+    {
+        $defaultCarrier = (string) Tools::getValue(self::CONFIG_DEFAULT_CARRIER);
+        $postedLockerTypes = Tools::getValue(self::CONFIG_LOCKER_TYPES);
+        $lockerTypes = is_array($postedLockerTypes)
+            ? array_values(array_intersect(array_keys($this->getServicesOfType(self::SERVICE_LOCKER)), $postedLockerTypes))
+            : [];
+
+        if (!array_key_exists($defaultCarrier, $this->getServicesOfType(self::SERVICE_HOME))) {
+            return $this->displayError($this->l('Please choose the home delivery carrier.'));
+        }
+
+        Configuration::updateValue(self::CONFIG_DEFAULT_CARRIER, $defaultCarrier);
+        Configuration::updateValue(self::CONFIG_LOCKER_TYPES, implode(',', $lockerTypes));
+
+        return $this->displayConfirmation($this->l('Settings have been saved successfully.'));
+    }
+
+    /**
+     * @return string
+     */
+    private function renderSettingsForm()
+    {
+        $labels = $this->getServiceLabels();
+        $defaultCarrier = Configuration::get(self::CONFIG_DEFAULT_CARRIER);
+        $selectedLockerTypes = $this->getSelectedLockerTypes();
+
+        $homeServices = [];
+        foreach (array_keys($this->getServicesOfType(self::SERVICE_HOME)) as $key) {
+            $homeServices[] = [
+                'key' => $key,
+                'label' => $labels[$key],
+                'selected' => $key === $defaultCarrier,
+            ];
+        }
+
+        $lockerServices = [];
+        foreach ($this->getServicesOfType(self::SERVICE_LOCKER) as $key => $service) {
+            $lockerServices[] = [
+                'key' => $key,
+                'label' => $labels[$key],
+                'logo' => $this->_path . 'views/img/' . $service['logo'],
+                'checked' => in_array($key, $selectedLockerTypes, true),
+            ];
+        }
+
+        $this->smarty->assign([
+            'europarcel_form_action' => AdminController::$currentIndex . '&configure=' . $this->name
+                . '&tab_module=' . $this->tab . '&module_name=' . $this->name
+                . '&token=' . Tools::getAdminTokenLite('AdminModules'),
+            'europarcel_home_services' => $homeServices,
+            'europarcel_locker_services' => $lockerServices,
+            'europarcel_home_carrier_id' => (int) Configuration::get(self::CONFIG_HOME_CARRIER_ID),
+            'europarcel_locker_carrier_id' => (int) Configuration::get(self::CONFIG_LOCKER_CARRIER_ID),
+        ]);
+
+        return $this->display(__FILE__, 'views/templates/admin/configuration.tpl');
+    }
+
+    /**
+     * Add the EuroParcel columns to the orders and customer tables.
+     *
+     * @return bool
+     */
+    private function installDatabase()
+    {
+        return $this->addColumnIfMissing('orders', 'europarcel_locker_id', 'INT UNSIGNED NULL DEFAULT NULL AFTER `id_carrier`')
+            && $this->addColumnIfMissing('orders', 'europarcel_carrier_id', 'INT UNSIGNED NULL DEFAULT NULL AFTER `id_carrier`')
+            && $this->addColumnIfMissing('orders', 'europarcel_service_id', 'INT UNSIGNED NULL DEFAULT NULL AFTER `europarcel_carrier_id`')
+            && $this->addColumnIfMissing('customer', 'europarcel_locker_data', 'TEXT NULL DEFAULT NULL');
+    }
+
+    /**
+     * @param string $table Table name without prefix
+     * @param string $column
+     * @param string $definition SQL column definition
+     *
+     * @return bool
+     */
+    private function addColumnIfMissing($table, $column, $definition)
+    {
+        $db = Db::getInstance();
+        $table = _DB_PREFIX_ . $table;
+
+        if ($db->executeS('SHOW COLUMNS FROM `' . bqSQL($table) . '` WHERE Field = \'' . pSQL($column) . '\'')) {
+            return true;
+        }
+
+        if ($db->execute('ALTER TABLE `' . bqSQL($table) . '` ADD `' . bqSQL($column) . '` ' . $definition)) {
+            return true;
+        }
+
+        $this->_errors[] = sprintf($this->l('Could not add the %1$s column to the %2$s table.'), $column, $table);
+
+        return false;
+    }
+
+    /**
+     * @return bool
+     */
+    private function installCarriers()
+    {
+        foreach (self::CARRIERS as $configKey => $definition) {
+            if (!$this->createCarrier($configKey, $definition)) {
+                return false;
             }
         }
-        return '';
+
+        return true;
     }
-    private function getSelectedLockerFromSession()
+
+    /**
+     * Create a carrier handled by the module, open to every customer group and active zone, with a price
+     * range and a weight range priced at 0 for the merchant to adjust.
+     *
+     * @param string $configKey Configuration key that stores the carrier id
+     * @param array<string, int|string> $definition One of self::CARRIERS
+     *
+     * @return bool
+     */
+    private function createCarrier($configKey, array $definition)
     {
-        if (isset($this->context->cookie->europarcel_locker_data)) {
-            return json_decode($this->context->cookie->europarcel_locker_data, true);
+        $carrier = new Carrier();
+        $carrier->name = $definition['name'];
+        $carrier->active = true;
+        $carrier->deleted = false;
+        $carrier->is_module = true;
+        $carrier->external_module_name = $this->name;
+        $carrier->shipping_external = false;
+        $carrier->need_range = true;
+        $carrier->shipping_handling = false;
+        $carrier->range_behavior = false;
+        $carrier->grade = $definition['grade'];
+        $carrier->max_width = $definition['max_width'];
+        $carrier->max_height = $definition['max_height'];
+        $carrier->max_depth = $definition['max_depth'];
+        $carrier->max_weight = $definition['max_weight'];
+        $carrier->url = self::TRACKING_URL;
+
+        $delay = [];
+        foreach (Language::getLanguages(false) as $language) {
+            $delay[(int) $language['id_lang']] = $definition['delay'];
+        }
+        $carrier->delay = $delay;
+
+        if (!$carrier->add()) {
+            $this->_errors[] = sprintf($this->l('Could not create the %s carrier.'), $definition['name']);
+
+            return false;
         }
 
-        return null;
+        Configuration::updateValue($configKey, (int) $carrier->id);
+        $this->copyCarrierLogo($carrier->id);
+
+        $groupIds = [];
+        foreach (Group::getGroups((int) $this->context->language->id) as $group) {
+            $groupIds[] = (int) $group['id_group'];
+        }
+        $carrier->setGroups($groupIds);
+
+        foreach ([new RangePrice(), new RangeWeight()] as $range) {
+            $range->id_carrier = (int) $carrier->id;
+            $range->delimiter1 = 0.0;
+            $range->delimiter2 = 10000.0;
+
+            if (!$range->add()) {
+                $this->_errors[] = sprintf($this->l('Could not create the price ranges of the %s carrier.'), $definition['name']);
+
+                return false;
+            }
+        }
+
+        // Zones come after the ranges: adding a zone also adds its delivery prices for every range.
+        foreach (Zone::getZones(true) as $zone) {
+            $carrier->addZone((int) $zone['id_zone']);
+        }
+
+        return true;
     }
 
-    private function clearLockerFromSession()
+    /**
+     * Use the module logo as the carrier logo.
+     *
+     * @param int $idCarrier
+     *
+     * @return bool
+     */
+    private function copyCarrierLogo($idCarrier)
     {
-        unset($this->context->cookie->europarcel_locker_data);
+        $source = __DIR__ . '/logo.png';
+        $destination = _PS_SHIP_IMG_DIR_ . (int) $idCarrier . '.jpg';
+
+        if (!file_exists($source) || !copy($source, $destination)) {
+            return false;
+        }
+
+        @chmod($destination, 0644);
+
+        return true;
+    }
+
+    /**
+     * @param string $configKey Configuration key that stores the carrier id
+     *
+     * @return bool
+     */
+    private function deleteCarrier($configKey)
+    {
+        $carrier = new Carrier((int) Configuration::get($configKey));
+
+        if (!Validate::isLoadedObject($carrier)) {
+            return true;
+        }
+
+        $carrier->deleted = true;
+
+        return $carrier->update();
+    }
+
+    /**
+     * @param int $idCarrier
+     *
+     * @return bool
+     */
+    private function isLockerCarrier($idCarrier)
+    {
+        return $this->isModuleCarrier($idCarrier, self::CONFIG_LOCKER_CARRIER_ID);
+    }
+
+    /**
+     * @param int $idCarrier
+     *
+     * @return bool
+     */
+    private function isHomeCarrier($idCarrier)
+    {
+        return $this->isModuleCarrier($idCarrier, self::CONFIG_HOME_CARRIER_ID);
+    }
+
+    /**
+     * Whether a carrier is the module carrier stored under a configuration key. Editing a carrier saves it
+     * under a new id and keeps the old one for past orders; every version shares the same id_reference.
+     *
+     * @param int $idCarrier
+     * @param string $configKey
+     *
+     * @return bool
+     */
+    private function isModuleCarrier($idCarrier, $configKey)
+    {
+        $idCarrier = (int) $idCarrier;
+        $configuredId = (int) Configuration::get($configKey);
+
+        if (!$idCarrier || !$configuredId) {
+            return false;
+        }
+
+        if ($idCarrier === $configuredId) {
+            return true;
+        }
+
+        $reference = $this->getCarrierReference($idCarrier);
+
+        return $reference > 0 && $reference === $this->getCarrierReference($configuredId);
+    }
+
+    /**
+     * @param int $idCarrier
+     *
+     * @return int The carrier's id_reference, or 0 when the carrier does not exist
+     */
+    private function getCarrierReference($idCarrier)
+    {
+        $carrier = new Carrier((int) $idCarrier);
+
+        return Validate::isLoadedObject($carrier) ? (int) $carrier->id_reference : 0;
+    }
+
+    /**
+     * @param int $serviceId self::SERVICE_HOME or self::SERVICE_LOCKER
+     *
+     * @return array<string, Service> Services of self::SERVICES offering that service, by key
+     */
+    private function getServicesOfType($serviceId)
+    {
+        $services = [];
+
+        foreach (self::SERVICES as $key => $service) {
+            if ($service['service_id'] === $serviceId) {
+                $services[$key] = $service;
+            }
+        }
+
+        return $services;
+    }
+
+    /**
+     * @return array<string, string> Translated label of each service of self::SERVICES
+     */
+    private function getServiceLabels()
+    {
+        return [
+            'cargus_national' => $this->l('Cargus - Delivery to address'),
+            'dpd_standard' => $this->l('DPD - Delivery to address'),
+            'fan_courier' => $this->l('Fan Courier - Delivery to address'),
+            'gls_national' => $this->l('GLS - Delivery to address'),
+            'sameday' => $this->l('SameDay - Delivery to address'),
+            'bookurier' => $this->l('Bookurier - Delivery to address'),
+            'easybox' => $this->l('Sameday EasyBox - Delivery to locker'),
+            'fanbox' => $this->l('Fan Courier FANbox - Delivery to locker'),
+            'dpdbox' => $this->l('DPD Box - Delivery to locker'),
+            'carguslocker' => $this->l('Cargus - Delivery to locker'),
+        ];
+    }
+
+    /**
+     * @param int $courierId EuroParcel courier id
+     * @param int $serviceId
+     *
+     * @return string Label of the matching service, or an empty string
+     */
+    private function getServiceLabel($courierId, $serviceId)
+    {
+        foreach (self::SERVICES as $key => $service) {
+            if ($service['carrier_id'] === (int) $courierId && $service['service_id'] === (int) $serviceId) {
+                $labels = $this->getServiceLabels();
+
+                return $labels[$key];
+            }
+        }
+
+        return '';
+    }
+
+    /**
+     * @return Service|null The home delivery service picked in the settings
+     */
+    private function getDefaultHomeService()
+    {
+        $services = $this->getServicesOfType(self::SERVICE_HOME);
+        $key = Configuration::get(self::CONFIG_DEFAULT_CARRIER);
+
+        return isset($services[$key]) ? $services[$key] : null;
+    }
+
+    /**
+     * @return string[] Keys of the locker networks offered to customers
+     */
+    private function getSelectedLockerTypes()
+    {
+        $lockerServices = $this->getServicesOfType(self::SERVICE_LOCKER);
+        $selected = explode(',', (string) Configuration::get(self::CONFIG_LOCKER_TYPES));
+
+        return array_values(array_intersect(array_keys($lockerServices), $selected));
+    }
+
+    /**
+     * @return int[] EuroParcel courier ids of the locker networks offered to customers
+     */
+    private function getLockerCourierIds()
+    {
+        $ids = [];
+
+        foreach ($this->getSelectedLockerTypes() as $key) {
+            $ids[] = self::SERVICES[$key]['carrier_id'];
+        }
+
+        return $ids;
+    }
+
+    /**
+     * Store the EuroParcel service on an order. It is written to the database and to the order object:
+     * PrestaShop saves that same object again right after hookActionValidateOrder(), and when the Order
+     * override's fields are loaded, that save writes them from the object.
+     *
+     * @param Order $order
+     * @param int $serviceId
+     * @param int|null $courierId EuroParcel courier id
+     * @param int|null $lockerId
+     *
+     * @return bool
+     */
+    private function saveOrderService(Order $order, $serviceId, $courierId, $lockerId)
+    {
+        $fields = [
+            'europarcel_service_id' => (int) $serviceId,
+            'europarcel_carrier_id' => $courierId ? (int) $courierId : null,
+            'europarcel_locker_id' => $lockerId ? (int) $lockerId : null,
+        ];
+
+        foreach ($fields as $field => $value) {
+            if (property_exists($order, $field)) {
+                $order->{$field} = $value;
+            }
+        }
+
+        return Db::getInstance()->update('orders', $fields, 'id_order = ' . (int) $order->id, 1, true);
+    }
+
+    /**
+     * Read the EuroParcel columns of an order from the database, so this works even when overrides are disabled.
+     *
+     * @param int $idOrder
+     *
+     * @return array<string, mixed>
+     */
+    private function getOrderServiceData($idOrder)
+    {
+        $query = new DbQuery();
+        $query->select('europarcel_locker_id, europarcel_carrier_id, europarcel_service_id')
+            ->from('orders')
+            ->where('id_order = ' . (int) $idOrder);
+
+        $row = Db::getInstance()->getRow($query);
+
+        return $row ?: ['europarcel_locker_id' => null, 'europarcel_carrier_id' => null, 'europarcel_service_id' => null];
     }
 
     /**
@@ -780,34 +803,31 @@ class EuroParcel extends Module
      * serves is forgotten, so the customer picks a new one instead of placing an order that cannot be shipped.
      * Once checked, the locker sits in the session, so the check runs once per checkout.
      *
-     * @return array|null Locker data, or null when the customer has to pick a locker
+     * @return Locker|null Locker data, or null when the customer has to pick a locker
      */
     private function getUsableLocker()
     {
         $locker = $this->getSelectedLockerFromSession();
-        $id_customer = (int) $this->context->customer->id;
-        if ($locker || !$id_customer) {
+        $idCustomer = (int) $this->context->customer->id;
+
+        if ($locker || !$idCustomer) {
             return $locker;
         }
 
-        $locker = $this->getCustomerLocker($id_customer);
+        $locker = $this->getCustomerLocker($idCustomer);
+
         if (!$locker) {
             return null;
         }
 
-        if (isset($locker['id']) && $this->lockerIsGone($locker['id'])) {
-            Db::getInstance()->update(
-                'customer',
-                ['europarcel_locker_data' => null],
-                'id_customer = ' . $id_customer,
-                0,
-                true
-            );
+        if ($this->lockerIsGone($locker['id'])) {
+            $this->forgetCustomerLocker($idCustomer);
 
             return null;
         }
 
-        $this->context->cookie->__set('europarcel_locker_data', json_encode($locker));
+        $this->context->cookie->__set(self::COOKIE_LOCKER, $this->encodeLocker($locker));
+        // The checkout is rendered after PrestaShop has written the cookie, so it is written here.
         $this->context->cookie->write();
 
         return $locker;
@@ -837,120 +857,116 @@ class EuroParcel extends Module
         return $status === 404 || $status === 400;
     }
 
-    public function getAvailableLockersForSelection()
+    /**
+     * @return Locker|null The locker picked in this checkout
+     */
+    private function getSelectedLockerFromSession()
     {
-        $selected_lockers = explode(',', Configuration::get('EUROPARCEL_LOCKER_TYPES'));
-        $available_lockers = [];
+        $json = $this->context->cookie->__get(self::COOKIE_LOCKER);
 
-        foreach ($this->available_lockers as $key => $label) {
-            if (in_array($key, $selected_lockers)) {
-                $available_lockers[$key] = $label;
-            }
-        }
+        return $json ? $this->normalizeLocker(json_decode($json, true)) : null;
+    }
 
-        return $available_lockers;
+    private function clearLockerFromSession(): void
+    {
+        unset($this->context->cookie->{self::COOKIE_LOCKER});
     }
 
     /**
-     * Get carrier logo path
+     * Remember a customer's locker, to suggest it at their next checkout.
      *
-     * @param string $carrier_key Carrier key (e.g., 'cargus_national', 'easybox')
+     * @param int $idCustomer
+     * @param Locker $locker
      *
-     * @return string Logo file name or empty string if not found
+     * @return bool
      */
-    public function getCarrierLogo($carrier_key)
+    private function saveCustomerLocker($idCustomer, array $locker)
     {
-        if (isset($this->carrier_settings[$carrier_key]['logo'])) {
-            return $this->carrier_settings[$carrier_key]['logo'];
+        if (!(int) $idCustomer) {
+            return false;
         }
-
-        return '';
-    }
-
-    protected function saveCustomerLocker($id_customer, $lockerData)
-    {
-        $lockerDataJson = json_encode($lockerData);
 
         return Db::getInstance()->update(
             'customer',
-            ['europarcel_locker_data' => pSQL($lockerDataJson)],
-            'id_customer = ' . (int) $id_customer
+            ['europarcel_locker_data' => pSQL($this->encodeLocker($locker), true)],
+            'id_customer = ' . (int) $idCustomer,
+            1
         );
     }
 
     /**
-     * Get the customer's preferred locker
+     * @param int $idCustomer
+     *
+     * @return Locker|null The customer's saved locker
      */
-    protected function getCustomerLocker($id_customer)
+    private function getCustomerLocker($idCustomer)
     {
-        $sql = new DbQuery();
-        $sql->select('europarcel_locker_data')
-                ->from('customer')
-                ->where('id_customer = ' . (int) $id_customer);
+        $query = new DbQuery();
+        $query->select('europarcel_locker_data')
+            ->from('customer')
+            ->where('id_customer = ' . (int) $idCustomer);
 
-        $result = Db::getInstance()->getValue($sql);
+        $json = Db::getInstance()->getValue($query);
 
-        if ($result) {
-            $lockerData = json_decode($result, true);
-
-            return $lockerData ?: null;
-        }
-
-        return null;
+        return $json ? $this->normalizeLocker(json_decode($json, true)) : null;
     }
 
-    public function getContent()
+    /**
+     * @param int $idCustomer
+     *
+     * @return bool
+     */
+    private function forgetCustomerLocker($idCustomer)
     {
-        $output = '';
-        if (Tools::isSubmit('save_europarcel_settings')) {
-            $locker_types = Tools::getValue('EUROPARCEL_LOCKER_TYPES');
-            $default_carrier = Tools::getValue('EUROPARCEL_DEFAULT_CARRIER');
-            // Save the selected locker types
-            if (is_array($locker_types)) {
-                Configuration::updateValue('EUROPARCEL_LOCKER_TYPES', implode(',', $locker_types));
-            } else {
-                Configuration::updateValue('EUROPARCEL_LOCKER_TYPES', '');
-            }
-            if (!empty($default_carrier) && array_key_exists($default_carrier, $this->available_carriers)) {
-                Configuration::updateValue('EUROPARCEL_DEFAULT_CARRIER', $default_carrier);
-            }
-            $output .= $this->displayConfirmation('Settings have been saved successfully.');
-        }
-        // Prepare data for template
-        $carrier_id = Configuration::get('EUROPARCEL_CARRIER_ID');
-        $locker_carrier_id = Configuration::get('EUROPARCEL_LOCKER_CARRIER_ID');
-        $selected_lockers = explode(',', Configuration::get('EUROPARCEL_LOCKER_TYPES'));
-        $default_carrier = Configuration::get('EUROPARCEL_DEFAULT_CARRIER');
-        $carriers = [];
-        foreach ($this->available_carriers as $key => $label) {
-            $carriers[] = [// Use [] to append, not ['key']
-                'key' => $key,
-                'name' => $label,
-            ];
-        }
-        $carrier_logos = [];
-        $available_lockers = [];
-        foreach ($this->available_lockers as $key => $label) {
-            $available_lockers[] = [// Use [] to append, not ['key']
-                'key' => $key,
-                'name' => $label,
-            ];
-            $carrier_logos[$key] = $this->getCarrierLogo($key);
-        }
-        // Assign variables for template
-        $this->context->smarty->assign([
-            'post_url' => $this->context->link->getAdminLink('AdminModules', true) . '&configure=' . $this->name . '&tab_module=' . $this->tab . '&module_name=' . $this->name,
-            'carriers' => $carriers,
-            'default_carrier' => $default_carrier,
-            'available_lockers' => $available_lockers,
-            'selected_lockers' => $selected_lockers,
-            'carrier_logos' => $carrier_logos,
-            'module_path' => $this->context->shop->getBaseURL(true) . 'modules/' . $this->name . '/',
-            'carrier_id' => $carrier_id,
-            'locker_carrier_id' => $locker_carrier_id,
-        ]);
-        $output .= $this->display(__FILE__, 'views/templates/admin/configuration.tpl');
+        return Db::getInstance()->update(
+            'customer',
+            ['europarcel_locker_data' => null],
+            'id_customer = ' . (int) $idCustomer,
+            1,
+            true
+        );
+    }
 
-        return $output;
+    /**
+     * Keep the locker fields the module uses, with their expected types. Lockers come from the browser
+     * (the map's message), the cookie and the database, so they are always checked.
+     *
+     * @param mixed $data
+     *
+     * @return Locker|null The locker, or null when the data does not describe a locker
+     */
+    private function normalizeLocker($data)
+    {
+        if (!is_array($data) || !isset($data['id'], $data['carrier_id'])
+            || !Validate::isUnsignedId($data['id']) || !Validate::isUnsignedId($data['carrier_id'])
+            || !(int) $data['id'] || !(int) $data['carrier_id']) {
+            return null;
+        }
+
+        $locker = [
+            'id' => (int) $data['id'],
+            'carrier_id' => (int) $data['carrier_id'],
+        ];
+
+        foreach (['name', 'address', 'carrier_name'] as $field) {
+            $locker[$field] = isset($data[$field]) && is_scalar($data[$field])
+                ? Tools::substr(trim((string) $data[$field]), 0, 255)
+                : '';
+        }
+
+        return $locker;
+    }
+
+    /**
+     * Encode a locker for the cookie and the database. PrestaShop's cookie rejects "|" and "¤":
+     * json_encode() already escapes "¤", and "|" is escaped here.
+     *
+     * @param Locker $locker
+     *
+     * @return string
+     */
+    private function encodeLocker(array $locker)
+    {
+        return str_replace('|', '\\u007c', json_encode($locker));
     }
 }

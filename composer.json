@@ -1,0 +1,26 @@
+{
+    "name": "europarcel/europarcel",
+    "description": "EuroParcel shipping module for PrestaShop: home delivery and locker pickup",
+    "type": "prestashop-module",
+    "license": "AFL-3.0",
+    "authors": [
+        {
+            "name": "EuroParcel"
+        }
+    ],
+    "require": {
+        "php": ">=7.1"
+    },
+    "require-dev": {
+        "friendsofphp/php-cs-fixer": "^3.0",
+        "prestashop/php-dev-tools": "^5.0"
+    },
+    "config": {
+        "prepend-autoloader": false,
+        "sort-packages": true
+    },
+    "scripts": {
+        "cs-check": "php-cs-fixer fix --dry-run --diff",
+        "cs-fix": "php-cs-fixer fix"
+    }
+}

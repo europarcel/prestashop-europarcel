@@ -1,52 +1,45 @@
 {*
- * EuroParcel Carrier Extra Content Template
+ * EuroParcel Configuration Template
  *
  * @author    EuroParcel
  * @copyright Copyright (c) 2025 EuroParcel
  * @license   http://opensource.org/licenses/afl-3.0.php  Academic Free License (AFL 3.0)
  *}
-<div class="panel">
+<div class="panel europarcel-settings">
     <div class="panel-heading">
-        <i class="icon-cogs"></i> EuroParcel Settings
+        <i class="icon-cogs"></i> {l s='EuroParcel Settings' mod='europarcel'}
     </div>
     <div class="panel-body">
-        <form method="post" action="{$post_url|escape:'html':'UTF-8'}">
+        <form method="post" action="{$europarcel_form_action|escape:'html':'UTF-8'}">
             <div class="form-group">
-                <label for="EUROPARCEL_DEFAULT_CARRIER">Home Delivery Carrier:</label>
+                <label for="EUROPARCEL_DEFAULT_CARRIER">{l s='Home Delivery Carrier:' mod='europarcel'}</label>
                 <select name="EUROPARCEL_DEFAULT_CARRIER" id="EUROPARCEL_DEFAULT_CARRIER" class="form-control fixed-width-xxl">
-                    <option value="">-- Select Carrier --</option>
-                    {foreach from=$carriers item=carrier}
-                        <option value="{$carrier.key|escape:'html':'UTF-8'}" {if $carrier.key == $default_carrier}selected{/if}>
-                            {$carrier.name|escape:'html':'UTF-8'}
+                    <option value="">{l s='-- Select Carrier --' mod='europarcel'}</option>
+                    {foreach $europarcel_home_services as $service}
+                        <option value="{$service.key|escape:'html':'UTF-8'}"{if $service.selected} selected{/if}>
+                            {$service.label|escape:'html':'UTF-8'}
                         </option>
                     {/foreach}
                 </select>
-                <p class="help-block">Choose the carrier to be used when customers select home delivery</p>
+                <p class="help-block">{l s='Choose the carrier to be used when customers select home delivery' mod='europarcel'}</p>
             </div>
-            
+
             <div class="form-group">
-                <label>Available locker types for customers:</label>
-                <div class="checkbox">
-                    {foreach from=$available_lockers item=locker}
-                        <div class="checkbox" style="margin-bottom: 10px;">
-                            <label style="display: flex; align-items: center;">
-                                <input type="checkbox" name="EUROPARCEL_LOCKER_TYPES[]" value="{$locker.key|escape:'html':'UTF-8'}" 
-                                       {if in_array($locker.key, $selected_lockers)}checked{/if} style="margin-right: 8px;">
-                                {if $carrier_logos[$locker.key]}
-                                    <img src="{$module_path|escape:'html':'UTF-8'}views/img/{$carrier_logos[$locker.key]|escape:'html':'UTF-8'}" 
-                                         alt="{$locker.key|escape:'html':'UTF-8'}" 
-                                         style="height: 20px; width: auto; object-fit: contain; vertical-align: middle; margin-right: 10px; max-width: 60px;">
-                                {/if}
-                                <span>{$locker.name|escape:'html':'UTF-8'}</span>
-                            </label>
-                        </div>
-                    {/foreach}
-                </div>
-                <p class="help-block">Select the locker types that customers can choose</p>
+                <label>{l s='Available locker types for customers:' mod='europarcel'}</label>
+                {foreach $europarcel_locker_services as $service}
+                    <div class="checkbox europarcel-locker-type">
+                        <label>
+                            <input type="checkbox" name="EUROPARCEL_LOCKER_TYPES[]" value="{$service.key|escape:'html':'UTF-8'}"{if $service.checked} checked{/if}>
+                            <img src="{$service.logo|escape:'html':'UTF-8'}" alt="{$service.key|escape:'html':'UTF-8'}">
+                            <span>{$service.label|escape:'html':'UTF-8'}</span>
+                        </label>
+                    </div>
+                {/foreach}
+                <p class="help-block">{l s='Select the locker types that customers can choose' mod='europarcel'}</p>
             </div>
-            
+
             <button type="submit" name="save_europarcel_settings" class="btn btn-primary">
-                <i class="icon-save"></i> Save Settings
+                <i class="icon-save"></i> {l s='Save Settings' mod='europarcel'}
             </button>
         </form>
     </div>
@@ -54,10 +47,10 @@
 
 <div class="panel">
     <div class="panel-heading">
-        <i class="icon-info"></i> Carriers Information
+        <i class="icon-info"></i> {l s='Carriers Information' mod='europarcel'}
     </div>
     <div class="panel-body">
-        <p><strong>EuroParcel Carrier ID:</strong> {$carrier_id|escape:'html':'UTF-8'}</p>
-        <p><strong>EuroParcel Locker Carrier ID:</strong> {$locker_carrier_id|escape:'html':'UTF-8'}</p>
+        <p><strong>{l s='EuroParcel Carrier ID:' mod='europarcel'}</strong> {$europarcel_home_carrier_id|intval}</p>
+        <p><strong>{l s='EuroParcel Locker Carrier ID:' mod='europarcel'}</strong> {$europarcel_locker_carrier_id|intval}</p>
     </div>
 </div>

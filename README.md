@@ -1,7 +1,7 @@
 # EuroParcel - PrestaShop Shipping Module
 
-![Version](https://img.shields.io/badge/version-1.0.5-blue.svg)
-![PrestaShop](https://img.shields.io/badge/PrestaShop-1.7%20%7C%208.x-brightgreen.svg)
+![Version](https://img.shields.io/badge/version-2.0.0-blue.svg)
+![PrestaShop](https://img.shields.io/badge/PrestaShop-1.7%20%7C%208.x%20%7C%209.x-brightgreen.svg)
 ![License](https://img.shields.io/badge/license-AFL--3.0-orange.svg)
 
 **EuroParcel** is a comprehensive shipping module for PrestaShop that integrates multiple Romanian courier services, offering both home delivery and locker pickup options for your customers.
@@ -83,12 +83,12 @@
 ## 📦 Requirements
 
 ### PrestaShop Version
-- **Minimum**: PrestaShop 1.7.0
-- **Maximum**: PrestaShop 8.x
-- **Recommended**: PrestaShop 1.7.6+ or 8.x
+- **Minimum**: PrestaShop 1.7.0 (the EuroParcel panel on the back office order page needs 1.7.7 or later)
+- **Maximum**: PrestaShop 9.x
+- **Recommended**: PrestaShop 8.x or 9.x
 
 ### Server Requirements
-- **PHP**: 7.1 or higher (7.4+ recommended)
+- **PHP**: 7.1 or higher (7.4+ recommended; PrestaShop 9 itself needs PHP 8.1+)
 - **MySQL**: 5.6+ or MariaDB 10.0+
 - **PHP Extensions**:
   - `json` (for data handling)
@@ -148,7 +148,7 @@
 ### Post-Installation
 
 After installation, the module will:
-- ✅ Create two carriers: "EuroParcel" and "EuroParcel Locker"
+- ✅ Create two carriers: "EuroParcel - Home Delivery" and "EuroParcel Locker Delivery"
 - ✅ Add custom fields to `orders` table (locker_id, carrier_id, service_id)
 - ✅ Add custom field to `customer` table (locker preference)
 - ✅ Register necessary hooks
@@ -170,12 +170,12 @@ After installation, the module will:
 
 Select which carrier should be used when customers choose the "EuroParcel" (home delivery) option:
 
-- Cargus National
+- Cargus National (default)
 - DPD Standard
 - Fan Courier
 - GLS National
 - Bookurier
-- SameDay (default)
+- SameDay
 
 **Note**: This setting determines which carrier's API will be used for creating shipping labels.
 
@@ -203,7 +203,7 @@ These are auto-generated during installation and are used internally.
 After installation, configure the carriers in PrestaShop:
 
 1. Go to **Shipping > Carriers**
-2. Find "EuroParcel" and "EuroParcel Locker"
+2. Find "EuroParcel - Home Delivery" and "EuroParcel Locker Delivery"
 3. Configure:
    - **Shipping zones**: Enable for your zones (usually Romania)
    - **Price ranges**: Set shipping costs by price or weight
@@ -221,11 +221,11 @@ After installation, configure the carriers in PrestaShop:
 When a customer selects a locker, the order will show:
 
 1. **In Order Details**:
-   - Carrier: "EuroParcel Locker"
+   - Carrier: "EuroParcel Locker Delivery"
    - Locker information displayed in order panel
    - Locker ID stored in database
 
-2. **Database Fields** (accessible via Order object):
+2. **Database Fields** (accessible via the Order object and the `orders` webservice resource):
    - `europarcel_locker_id`: ID of the selected locker
    - `europarcel_carrier_id`: Carrier ID (1-6)
    - `europarcel_service_id`: 1 for home delivery, 2 for locker
@@ -284,6 +284,16 @@ $logoPath = $this->_path . 'views/img/cargus.webp';
 // - sameday.webp
 ```
 
+#### Code Quality
+
+The code follows the PrestaShop coding standard (`prestashop/php-dev-tools`). The development tools are not part of the module package:
+
+```bash
+composer install
+composer cs-check   # report differences from the standard
+composer cs-fix     # fix them
+```
+
 #### Hook Integration
 
 The module uses these hooks:
@@ -304,8 +314,8 @@ The module uses these hooks:
 #### Step 1: Select Shipping Method
 
 Customer sees two options:
-- **EuroParcel** - Delivery to address (24-48 hours)
-- **EuroParcel Locker** - Delivery to locker (next day)
+- **EuroParcel - Home Delivery** - Delivery to address (24-48 hours)
+- **EuroParcel Locker Delivery** - Delivery to locker (next day)
 
 #### Step 2: Select Locker (if Locker option chosen)
 
@@ -327,7 +337,6 @@ Customer sees two options:
 #### Step 4: Order Confirmation
 
 - Selected locker details shown on confirmation page
-- Email confirmation includes locker information
 - Customer can see locker address and pickup instructions
 
 ### Customer Convenience Features
@@ -369,11 +378,13 @@ europarcel_locker_data TEXT NULL DEFAULT NULL
 europarcel/
 ├── europarcel.php              # Main module class
 ├── config.xml                  # Module metadata
-├── logo.png                    # Module logo (PrestaShop admin)
+├── logo.png                    # Module logo, also copied to the carriers
 ├── LICENSE                     # AFL 3.0 license
 ├── README.md                   # This file
-├── SECURITY_FIXES.md           # Security fixes documentation
 ├── index.php                   # Security file
+├── .htaccess                   # Blocks direct access to templates and metadata
+├── composer.json               # Development tools only (coding standard), not shipped
+├── .php-cs-fixer.dist.php      # PrestaShop coding standard configuration, not shipped
 │
 ├── controllers/
 │   ├── index.php
@@ -389,18 +400,22 @@ europarcel/
 │           ├── index.php
 │           └── Order.php       # Adds locker fields to Order class
 │
+├── translations/
+│   ├── index.php
+│   └── ro.php                  # Romanian texts of the checkout and confirmation page
+│
 ├── upgrade/
 │   ├── index.php
-│   └── upgrade-1.0.5.php       # Puts the new logo on carriers created by earlier versions
+│   └── upgrade-2.0.0.php       # Puts the new logo on carriers created by earlier versions
 │
 └── views/
     ├── index.php
     ├── css/
     │   ├── index.php
-    │   └── europarcel.css      # Module styles
+    │   ├── admin.css           # Configuration page styles
+    │   └── europarcel.css      # Locker picker and map modal styles
     ├── img/                    # Carrier logos
     │   ├── index.php
-    │   ├── logo.png            # Module logo
     │   ├── bookurier.webp      # Bookurier logo
     │   ├── cargus.webp         # Cargus logo
     │   ├── cargus-ship-go.webp # Cargus Ship&Go logo
@@ -416,6 +431,9 @@ europarcel/
     │   └── europarcel-checkout.js  # Checkout integration
     └── templates/
         ├── index.php
+        ├── admin/
+        │   ├── index.php
+        │   └── configuration.tpl                 # Configuration page
         ├── front/
         │   └── index.php
         └── hook/
@@ -443,33 +461,36 @@ The module integrates with EuroParcel's hosted map service:
 {
   type: 'locker-selected',
   locker: {
-    id: 'locker_id',
+    id: 100011483,
+    carrier_id: 6,
     name: 'Locker Name',
     address: 'Street Address',
-    city: 'City',
-    carrier_id: 6,
-    // ... additional fields
+    locality_name: 'Cluj-Napoca',
+    county_name: 'Cluj',
+    coordinates: { lat: 46.77, lng: 23.6 },
+    carrier_name: 'Sameday'
   }
 }
 ```
 
+The module accepts messages from `https://maps.europarcel.com` only, and keeps `id`, `carrier_id`, `name`, `address` and `carrier_name`.
+
 ### Security Features
 
 1. **SQL Injection Prevention**
-   - All queries use DbQuery class or prepared statements
-   - All user inputs properly sanitized
+   - Every value in a query is cast to an integer or escaped with `pSQL()`
+   - Locker data is checked and reduced to the fields the module uses before it is stored
 
 2. **CSRF Protection**
-   - Token validation on all AJAX requests
-   - PrestaShop's built-in token system
+   - The AJAX endpoint accepts POST requests with PrestaShop's token only
 
 3. **XSS Prevention**
    - All output escaped in templates
-   - JSON validation on data storage
+   - The checkout script writes locker names and addresses as text, never as HTML
 
 4. **Directory Protection**
    - index.php files in all directories
-   - Prevents directory listing
+   - `.htaccess` (Apache 2.2 and 2.4) blocks templates, README, LICENSE and config.xml
 
 ---
 
@@ -487,7 +508,6 @@ The module integrates with EuroParcel's hosted map service:
   - `europarcel-modal.js`
   - `europarcel-checkout.js`
 - Clear PrestaShop cache: Performance > Clear Cache
-- Check if jQuery is loaded (required)
 
 #### 2. Locker Selection Not Saved
 
@@ -573,7 +593,7 @@ If issues persist:
 
 3. **Test AJAX Endpoint**:
    - Visit: `https://yourstore.com/module/europarcel/ajax?action=save_locker_session`
-   - Should return JSON error (without token)
+   - Should return a JSON error (`POST required`): the endpoint only accepts the checkout's POST requests
 
 ---
 
@@ -604,12 +624,12 @@ ALTER TABLE `ps_orders`
 ALTER TABLE `ps_customer` 
   DROP COLUMN `europarcel_locker_data`;
 
--- Delete carriers completely
-DELETE FROM ps_carrier WHERE name LIKE '%EuroParcel%';
+-- Delete carriers completely (their groups and zones first, while the carriers still exist)
 DELETE FROM ps_carrier_group WHERE id_carrier IN 
-  (SELECT id_carrier FROM ps_carrier WHERE name LIKE '%EuroParcel%');
+  (SELECT id_carrier FROM ps_carrier WHERE external_module_name = 'europarcel');
 DELETE FROM ps_carrier_zone WHERE id_carrier IN 
-  (SELECT id_carrier FROM ps_carrier WHERE name LIKE '%EuroParcel%');
+  (SELECT id_carrier FROM ps_carrier WHERE external_module_name = 'europarcel');
+DELETE FROM ps_carrier WHERE external_module_name = 'europarcel';
 ```
 
 ⚠️ **Warning**: This will delete all historical locker data from orders.
@@ -666,7 +686,14 @@ Full license text: http://opensource.org/licenses/afl-3.0.php
 
 ## 📊 Changelog
 
-### Version 1.0.5 (2026-10-23)
+### Version 2.0.0 (2026-10-23)
+
+**Upgrade notes**:
+- PHP 7.1 or later is required (it was the documented minimum; the code now relies on it)
+- The module's templates changed: a theme that overrides them in `themes/<theme>/modules/europarcel/` needs its copies updated
+
+**Compatibility**:
+- ✅ PrestaShop 9.x, in addition to 1.7 and 8.x
 
 **Enhancements**:
 - 🎨 New eAWB logo, in the module list and next to both EuroParcel carriers at checkout
@@ -675,6 +702,20 @@ Full license text: http://opensource.org/licenses/afl-3.0.php
 **Bug Fixes**:
 - 🐛 A customer's saved locker is checked with EuroParcel before checkout reuses it; a locker EuroParcel no longer serves is forgotten and the customer picks a new one, instead of placing an order with a locker EuroParcel cannot find
 - The check runs once per checkout; if EuroParcel cannot be reached, the saved locker is kept
+- 🐛 Locker orders keep their locker, courier and service when the payment is confirmed by a payment notification (IPN, webhook) instead of the customer's browser, or when the payment module loads an order before creating it; these values could be saved empty or as 0
+- 🐛 Orders created without a page controller (cron, scripts) no longer stop with a PHP error; a locker order placed without a locker is recorded in Advanced Parameters > Logs
+- 🐛 The EuroParcel panel of the order page shows for home delivery orders too, and for past orders after a carrier is edited
+- 🐛 "Change locker" opened the map twice and left an overlay over the checkout that could not be closed
+- 🐛 The locker picker works on shops installed in a subfolder (for example `example.com/shop/`), where its scripts were not loaded
+- 🐛 Closing the map on a phone keeps the checkout where the customer left it
+- 🐛 A locker name containing "|" no longer breaks the checkout session
+
+**Improvements**:
+- 🔒 Locker data sent by the browser is checked before it is stored, and locker names are shown as text, never as HTML
+- 🌍 Every text can be translated; Romanian translations are included, so the checkout error is now shown in Romanian too
+- 🎨 The EuroParcel panel of the order page uses the card layout of the page
+- 🔧 `.htaccess` works on Apache 2.4; the checkout scripts no longer need jQuery
+- 🧹 Code follows the PrestaShop coding standard; unused code removed
 
 ---
 

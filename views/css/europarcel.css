@@ -1,143 +1,89 @@
-.europarcel-module {
-	margin: 20px 0;
-	padding: 20px;
-	border: 2px solid #0056b3;
-	border-radius: 8px;
-	background: #f8f9fa;
+/**
+ * EuroParcel - front office styles: locker picker and locker map modal
+ *
+ * @author    EuroParcel
+ * @copyright Copyright (c) 2025 EuroParcel
+ * @license   http://opensource.org/licenses/afl-3.0.php  Academic Free License (AFL 3.0)
+ */
+
+.europarcel-locker-selection [hidden] {
+  display: none !important;
 }
 
-.europarcel-title {
-	color: #0056b3;
-	border-bottom: 2px solid #0056b3;
-	padding-bottom: 10px;
-	margin-bottom: 20px;
-	font-weight: bold;
+/* The modal rules use its id so theme styles for buttons and iframes do not change it. */
+#europarcel-iframe-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 2147483647;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
+  padding: 20px;
+  background: rgba(0, 0, 0, 0.5);
 }
 
-.europarcel-carriers-list {
-	display: grid;
-	gap: 15px;
+#europarcel-iframe-modal .europarcel-modal__dialog {
+  position: relative;
+  overflow: hidden;
+  width: 100%;
+  max-width: 1200px;
+  height: 90%;
+  border-radius: 8px;
+  background: #fff;
 }
 
-.europarcel-carrier-item {
-	padding: 20px;
-	border: 1px solid #dee2e6;
-	border-radius: 6px;
-	background: white;
-	transition: all 0.3s ease;
+#europarcel-iframe-modal .europarcel-modal__close {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 10;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.7);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  color: #fff;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  transition: all 0.2s ease;
 }
 
-.europarcel-carrier-item:hover {
-	box-shadow: 0 4px 15px rgba(0, 86, 179, 0.1);
-	border-color: #0056b3;
+#europarcel-iframe-modal .europarcel-modal__close:hover {
+  background: rgba(0, 0, 0, 0.9);
+  transform: scale(1.1);
 }
 
-.carrier-header {
-	display: flex;
-	align-items: center;
-	margin-bottom: 15px;
-	padding-bottom: 15px;
-	border-bottom: 1px solid #e9ecef;
+#europarcel-iframe-modal .europarcel-modal__frame {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: none;
 }
 
-.carrier-logo {
-	max-width: 60px;
-	max-height: 40px;
-	margin-right: 15px;
-	object-fit: contain;
+/* On small screens the map takes the whole screen. */
+#europarcel-iframe-modal.europarcel-modal--mobile {
+  align-items: flex-start;
+  padding: 0;
 }
 
-.carrier-name {
-	margin: 0;
-	color: #0056b3;
-	font-size: 1.2em;
+#europarcel-iframe-modal.europarcel-modal--mobile .europarcel-modal__dialog {
+  max-width: 100%;
+  height: 100%;
+  margin: 0;
+  border-radius: 0;
 }
 
-.carrier-details p {
-	margin: 8px 0;
-	display: flex;
-	align-items: center;
-}
-
-.carrier-details .material-icons {
-	margin-right: 8px;
-	color: #0056b3;
-	font-size: 18px;
-}
-
-.free-shipping {
-	color: #28a745;
-	font-weight: bold;
-	background: #d4edda;
-	padding: 2px 8px;
-	border-radius: 4px;
-}
-
-.carrier-description {
-	color: #6c757d;
-	font-style: italic;
-}
-
-.carrier-tracking a {
-	color: #0056b3;
-	text-decoration: none;
-	font-weight: 500;
-}
-
-.carrier-tracking a:hover {
-	text-decoration: underline;
-	color: #003d82;
-}
-
-.europarcel-no-carriers {
-	text-align: center;
-	padding: 30px;
-	color: #6c757d;
-}
-
-.europarcel-no-carriers .material-icons {
-	font-size: 48px;
-	margin-bottom: 15px;
-	color: #6c757d;
-}
-
-/* Styles for admin */
-.europarcel-admin-info {
-	margin: 15px 0;
-}
-
-.europarcel-admin-info h4 {
-	color: #0056b3;
-	margin-bottom: 15px;
-}
-
-@media (max-width: 768px) {
-	.europarcel-module {
-		padding: 15px;
-		margin: 15px 0;
-	}
-
-	.carrier-header {
-		flex-direction: column;
-		text-align: center;
-	}
-
-	.carrier-logo {
-		margin-right: 0;
-		margin-bottom: 10px;
-	}
-}
-.europarcel-highlight {
-	border-left: 4px solid #0056b3;
-	background: #f0f8ff;
-}
-
-.europarcel-badge {
-	background: #0056b3;
-	color: white;
-	padding: 2px 8px;
-	border-radius: 12px;
-	font-size: 0.7em;
-	margin-left: 10px;
-	vertical-align: middle;
+#europarcel-iframe-modal.europarcel-modal--mobile .europarcel-modal__close {
+  top: 15px;
+  right: 15px;
+  width: 35px;
+  height: 35px;
+  font-size: 20px;
 }

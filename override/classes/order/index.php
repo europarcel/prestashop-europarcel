@@ -1,4 +1,5 @@
 <?php
+
 /**
  * Security: Prevent directory listing
  *

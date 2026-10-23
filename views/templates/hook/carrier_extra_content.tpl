@@ -1,36 +1,33 @@
 {*
  * EuroParcel Carrier Extra Content Template
  *
+ * Locker picker shown under the locker carrier in the checkout. Both states are rendered; the
+ * script shows the selected locker once the customer picks one on the map.
+ *
  * @author    EuroParcel
  * @copyright Copyright (c) 2025 EuroParcel
  * @license   http://opensource.org/licenses/afl-3.0.php  Academic Free License (AFL 3.0)
  *}
-<div class="europarcel-locker-selection">
-    {if $selected_locker}
-        <div class="alert alert-success mb-2">
-            <p class="mb-1"><strong>Locker selectat:</strong> {$selected_locker.name|escape:'html':'UTF-8'}</p>
-            <p class="mb-1">{$selected_locker.address|escape:'html':'UTF-8'}</p>
-            <button type="button" class="btn btn-sm btn-primary europarcel-change-locker"
-                    data-address="{$checkout_data.address|escape:'html':'UTF-8'}"
-                    data-city="{$checkout_data.city|escape:'html':'UTF-8'}"
-                    data-state="{$checkout_data.state|escape:'html':'UTF-8'}"
-                    data-postcode="{$checkout_data.postcode|escape:'html':'UTF-8'}"
-                    data-couriers="{$courier_ids|escape:'html':'UTF-8'}">
-                Schimbă locker
-            </button>
-        </div>
-    {else}
-        <div class="alert alert-info mb-2">
-            <p class="mb-2">Pentru a continua, selectează un locker.</p>
-            <button type="button" class="btn btn-primary btn-sm europarcel-choose-locker"
-                    data-address="{$checkout_data.address|escape:'html':'UTF-8'}"
-                    data-city="{$checkout_data.city|escape:'html':'UTF-8'}"
-                    data-state="{$checkout_data.state|escape:'html':'UTF-8'}"
-                    data-postcode="{$checkout_data.postcode|escape:'html':'UTF-8'}"
-                    data-couriers="{$courier_ids|escape:'html':'UTF-8'}">
-                Alege locker
-            </button>
-        </div>
-    {/if}
+<div class="europarcel-locker-selection"
+     data-city="{$europarcel_city|escape:'html':'UTF-8'}"
+     data-county="{$europarcel_county|escape:'html':'UTF-8'}"
+     data-couriers="{$europarcel_courier_ids|escape:'html':'UTF-8'}"
+     data-map-title="{l s='Choose locker' mod='europarcel'}"
+     data-close-label="{l s='Close' mod='europarcel'}">
+    <div class="alert alert-success mb-2 europarcel-locker-selected"{if !$europarcel_locker} hidden{/if}>
+        <p class="mb-1">
+            <strong>{l s='Selected locker:' mod='europarcel'}</strong>
+            <span class="europarcel-locker-name">{if $europarcel_locker}{$europarcel_locker.name|escape:'html':'UTF-8'}{/if}</span>
+        </p>
+        <p class="mb-1 europarcel-locker-address">{if $europarcel_locker}{$europarcel_locker.address|escape:'html':'UTF-8'}{/if}</p>
+        <button type="button" class="btn btn-sm btn-primary europarcel-change-locker">
+            {l s='Change locker' mod='europarcel'}
+        </button>
+    </div>
+    <div class="alert alert-info mb-2 europarcel-locker-missing"{if $europarcel_locker} hidden{/if}>
+        <p class="mb-2">{l s='To continue, select a locker.' mod='europarcel'}</p>
+        <button type="button" class="btn btn-primary btn-sm europarcel-choose-locker">
+            {l s='Choose locker' mod='europarcel'}
+        </button>
+    </div>
 </div>
-<input type="hidden" name="europarcel_locker_data" id="europarcel_locker_data" value="{$europarcel_locker_data|escape:'html':'UTF-8'}">

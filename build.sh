@@ -3,9 +3,13 @@
 # EuroParcel Plugin Build Script
 # Creates a clean distribution zip file on the Desktop
 
+# Stop at the first failed step, and run from the module folder wherever the script is called from
+set -eu
+cd "$(dirname "$0")"
+
 # Set variables
 MODULE_NAME="europarcel"
-VERSION="1.0.5"
+VERSION="2.0.0"
 DESKTOP_PATH="$HOME/Desktop"
 OUTPUT_ZIP="${DESKTOP_PATH}/${MODULE_NAME}.zip"
 TEMP_DIR="/tmp/${MODULE_NAME}_build"
@@ -38,6 +42,9 @@ cp -r override "$TEMP_DIR/${MODULE_NAME}/"
 
 # Upgrade scripts (PrestaShop runs them when a shop updates the module)
 cp -r upgrade "$TEMP_DIR/${MODULE_NAME}/"
+
+# Translations
+cp -r translations "$TEMP_DIR/${MODULE_NAME}/"
 
 # Views (templates, CSS, JS, images)
 cp -r views "$TEMP_DIR/${MODULE_NAME}/"

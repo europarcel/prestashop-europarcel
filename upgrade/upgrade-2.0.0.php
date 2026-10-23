@@ -1,4 +1,5 @@
 <?php
+
 /**
  * EuroParcel - PrestaShop Shipping Module
  *
@@ -20,7 +21,7 @@ if (!defined('_PS_VERSION_')) {
  *
  * @return bool
  */
-function upgrade_module_1_0_5($module)
+function upgrade_module_2_0_0($module)
 {
     // md5 of the logo.png that versions 1.0.1 to 1.0.4 copied to their carriers
     $old_logo_md5 = '35ceb681a09ea6b63c2a5bb56c314f4a';

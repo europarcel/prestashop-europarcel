@@ -1,0 +1,29 @@
+/**
+ * EuroParcel - module configuration page styles
+ *
+ * @author    EuroParcel
+ * @copyright Copyright (c) 2025 EuroParcel
+ * @license   http://opensource.org/licenses/afl-3.0.php  Academic Free License (AFL 3.0)
+ */
+
+.europarcel-settings .checkbox.europarcel-locker-type {
+  margin-bottom: 10px;
+}
+
+.europarcel-settings .checkbox.europarcel-locker-type label {
+  display: flex;
+  align-items: center;
+}
+
+.europarcel-settings .checkbox.europarcel-locker-type input {
+  margin-right: 8px;
+}
+
+.europarcel-settings .checkbox.europarcel-locker-type img {
+  width: auto;
+  max-width: 60px;
+  height: 20px;
+  margin-right: 10px;
+  object-fit: contain;
+  vertical-align: middle;
+}
